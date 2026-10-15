@@ -1,0 +1,2494 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Webbalance 账务系统</title>
+<link rel="icon" href="logo.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F2F5F4}
+a{color:#1E7A62}a:hover{color:#155A48}
+input,select{font:inherit}
+table{border-collapse:collapse;width:100%}
+th{font-weight:600;text-align:left;font-size:12px;color:#4B5563;padding:10px 12px;border-bottom:1px solid #E5E7EB;white-space:nowrap}
+td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowrap;vertical-align:top}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+<template id="app-tpl">
+<div style="font-family: 'IBM Plex Sans','Noto Sans SC',sans-serif; color: #16202A; background: #F2F5F4; min-height: 100vh">
+  <template data-sc="if" value="{{hasDlMsg}}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 50; padding: 12px 20px; background: #16202A; color: #FFFFFF; border-radius: 8px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.18)">{{dlMsg}}</div>
+  </template>
+
+  <template data-sc="if" value="{{showGate}}" hint-placeholder-val="{{ false }}">
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box">
+      <section aria-label="登入" style="width: 100%; max-width: 400px; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; padding: 32px 28px; box-sizing: border-box">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 22px">
+          <img src="logo.png" alt="Webbalance logo" style="width: 52px; height: 52px">
+          <div>
+            <div style="font-weight: 700; font-size: 18px">Webbalance</div>
+            <div style="font-size: 13px; color: #6B7280">账务系统</div>
+          </div>
+        </div>
+        <template data-sc="if" value="{{gate.loading}}" hint-placeholder-val="{{ false }}">
+          <div style="font-size: 14px; color: #4B5563">{{gate.loadingText}}</div>
+        </template>
+        <template data-sc="if" value="{{gate.form}}" hint-placeholder-val="{{ true }}">
+          <h1 style="margin: 0 0 16px; font-size: 20px">{{gate.title}}</h1>
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <template data-sc="if" value="{{gate.askEmail}}" hint-placeholder-val="{{ true }}">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Email
+                <input type="email" autocomplete="username" value="{{gate.email}}" onChange="{{gate.onEmail}}" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+              </label>
+            </template>
+            <template data-sc="if" value="{{gate.askPw}}" hint-placeholder-val="{{ true }}">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">{{gate.pwLabel}}
+                <input type="password" autocomplete="{{gate.pwAuto}}" value="{{gate.pw}}" onChange="{{gate.onPw}}" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+              </label>
+            </template>
+            <template data-sc="if" value="{{gate.askPw2}}" hint-placeholder-val="{{ false }}">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">再输入一次密码
+                <input type="password" autocomplete="new-password" value="{{gate.pw2}}" onChange="{{gate.onPw2}}" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+              </label>
+            </template>
+            <template data-sc="if" value="{{gate.hasErr}}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="padding: 10px 12px; background: #FDECEC; color: #9B1C1C; border-radius: 6px; font-size: 13px">{{gate.err}}</div>
+            </template>
+            <template data-sc="if" value="{{gate.hasMsg}}" hint-placeholder-val="{{ false }}">
+              <div role="status" style="padding: 10px 12px; background: #DDF2EA; color: #11603F; border-radius: 6px; font-size: 13px">{{gate.msg}}</div>
+            </template>
+            <button type="button" onClick="{{gate.submit}}" disabled="{{busy}}" style="padding: 11px 16px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">{{gate.submitLabel}}</button>
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px">
+              <template data-sc="for" list="{{gate.links}}" as="k" hint-placeholder-count="2">
+                <button type="button" onClick="{{k.go}}" style="padding: 6px 0; border: 0; background: none; color: #1E7A62; font: inherit; font-size: 13px; cursor: pointer">{{k.label}}</button>
+              </template>
+            </div>
+          </div>
+        </template>
+      </section>
+    </div>
+  </template>
+
+  <template data-sc="if" value="{{ready}}" hint-placeholder-val="{{ true }}">
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch; min-height: 100vh">
+  <aside style="flex: 1 1 220px; max-width: 100%; background: #FFFFFF; border-right: 1px solid #E5E7EB; padding: 20px 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+      <img src="logo.png" alt="Webbalance logo" style="width: 44px; height: 44px">
+      <div>
+        <div style="font-weight: 700; font-size: 16px">Webbalance</div>
+        <div style="font-size: 12px; color: #6B7280">账务系统 · {{monthLabel}}</div>
+      </div>
+    </div>
+    <nav aria-label="主菜单" style="display: flex; flex-direction: column; gap: 2px; border-top: 3px solid #7BCAAC; padding-top: 14px">
+      <template data-sc="for" list="{{tabs}}" as="t" hint-placeholder-count="8">
+        <button type="button" onClick="{{t.go}}" aria-current="{{t.current}}" style="{{t.style}}">
+          <span style="{{t.dot}}"></span>{{t.label}}
+        </button>
+      </template>
+    </nav>
+    <div style="display: flex; flex-direction: column; gap: 6px; padding: 14px 6px 0; border-top: 1px solid #EEF0F2">
+      <div style="font-size: 12px; color: #4B5563">已登入</div>
+      <div style="font-size: 13px; font-weight: 600; word-break: break-all">{{userEmail}}</div>
+      <div style="font-size: 11px; color: #6B7280">{{loadedAt}}</div>
+      <button type="button" onClick="{{reload}}" disabled="{{busy}}" style="padding: 8px 10px; background: #FFFFFF; color: #1E7A62; border: 1px solid #1E7A62; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; text-align: left">重新载入资料</button>
+      <button type="button" onClick="{{exportAll}}" style="padding: 8px 10px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; text-align: left">下载备份（JSON）</button>
+      <button type="button" onClick="{{logout}}" style="padding: 8px 10px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; text-align: left">登出</button>
+    </div>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px 28px 64px; max-width: 1320px">
+
+    <!-- ============ 总览 ============ -->
+    <template data-sc="if" value="{{isDash}}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; flex-direction: column; gap: 24px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px">
+          <div>
+            <h1 style="margin: 0; font-size: 26px">总览 · {{monthLabel}}</h1>
+            <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">开 Invoice 时就计入分账 · 未收款是全部未付清的 Invoice</p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px">
+          <template data-sc="for" list="{{kpis}}" as="k" hint-placeholder-count="4">
+            <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 18px 20px">
+              <div style="font-size: 13px; color: #4B5563">{{k.label}}</div>
+              <div style="font-family: 'IBM Plex Mono',monospace; font-size: 24px; font-weight: 500; margin-top: 8px">{{k.value}}</div>
+              <div style="font-size: 12px; color: #6B7280; margin-top: 6px">{{k.sub}}</div>
+            </div>
+          </template>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 16px">
+          <section style="flex: 999 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+            <h2 style="margin: 0 0 4px; font-size: 17px">利润分配（本月）</h2>
+            <p style="margin: 0 0 18px; font-size: 13px; color: #4B5563">净利润 {{tot.net}} → 按每张单的来源分账 → 再从两人份额扣 Bernice 月薪 RM 500</p>
+            <div style="display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: #E5E7EB">
+              <div style="{{barCo}}"></div>
+              <div style="{{barBernice}}"></div>
+              <div style="{{barBalon}}"></div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 18px">
+              <div style="border: 1px solid #BFE3D5; background: #EEF8F4; border-radius: 8px; padding: 14px 16px">
+                <div style="font-size: 13px; color: #155A48; font-weight: 600">公司留存</div>
+                <div style="font-family: 'IBM Plex Mono',monospace; font-size: 20px; margin-top: 6px">{{sal.coFinal}}</div>
+                <div style="font-size: 12px; color: #2F5D50; margin-top: 6px; line-height: 1.5">10% 留存 {{tot.co}}<br>补贴月薪 −{{sal.fromCo}}<br>其他开销 −{{fund.exp}}</div>
+              </div>
+              <div style="border: 1px solid #F1D5C3; background: #FDF6F1; border-radius: 8px; padding: 14px 16px">
+                <div style="font-size: 13px; color: #8A3B0E; font-weight: 600">Bernice 分红</div>
+                <div style="font-family: 'IBM Plex Mono',monospace; font-size: 20px; margin-top: 6px">{{sal.bFinal}}</div>
+                <div style="font-size: 12px; color: #6B4A36; margin-top: 6px; line-height: 1.5">分账 {{tot.bernice}} − 月薪分摊 {{sal.bDed}}<br><strong>连月薪实拿 {{sal.bTake}}</strong></div>
+              </div>
+              <div style="border: 1px solid #C9D6EE; background: #F3F6FC; border-radius: 8px; padding: 14px 16px">
+                <div style="font-size: 13px; color: #1D4485; font-weight: 600">Balon 分红</div>
+                <div style="font-family: 'IBM Plex Mono',monospace; font-size: 20px; margin-top: 6px">{{sal.baFinal}}</div>
+                <div style="font-size: 12px; color: #3B4F72; margin-top: 6px; line-height: 1.5">分账 {{tot.balon}} − 月薪分摊 {{sal.baDed}}</div>
+              </div>
+            </div>
+            <div style="margin-top: 12px; font-size: 12px; color: #4B5563">{{sal.note}}（月薪按两人当月分账比例分摊）</div>
+          </section>
+
+          <section style="flex: 1 1 320px; min-width: 0; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+            <h2 style="margin: 0 0 4px; font-size: 17px">公司户口（本月）</h2>
+            <p style="margin: 0 0 14px; font-size: 13px; color: #4B5563">10% 留存，只在分账不够付月薪时才动用</p>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px">
+              <div style="display: flex; justify-content: space-between"><span>10% 留存收入</span><span style="font-family: 'IBM Plex Mono',monospace">{{fund.in}}</span></div>
+              <div style="display: flex; justify-content: space-between; color: #9B1C1C"><span>− 补贴 Bernice 月薪</span><span style="font-family: 'IBM Plex Mono',monospace">{{sal.fromCo}}</span></div>
+              <div style="display: flex; justify-content: space-between; color: #9B1C1C"><span>− 其他开销（礼物等）</span><span style="font-family: 'IBM Plex Mono',monospace">{{fund.exp}}</span></div>
+              <div style="display: flex; justify-content: space-between; font-weight: 700; border-top: 1px solid #E5E7EB; padding-top: 10px"><span>本月结余</span><span style="{{fund.style}}">{{fund.bal}}</span></div>
+            </div>
+          </section>
+        </div>
+
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px">
+            <h2 style="margin: 0; font-size: 17px">续约提醒 · {{renewSum.over}} 项已过期，{{renewSum.soon}} 项 30 天内到期</h2>
+            <button type="button" onClick="{{goRenew}}" style="border: 0; background: none; color: #1E7A62; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 8px 0">全部 {{renewSum.yCount}} 项 · 年收 {{renewSum.yTotal}} →</button>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 12px">
+            <template data-sc="for" list="{{alerts}}" as="r" hint-placeholder-count="6">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #EEF0F2; border-radius: 8px">
+                <div style="min-width: 0">
+                  <div style="font-size: 14px; font-weight: 500">{{r.item}}</div>
+                  <div style="font-size: 12px; color: #6B7280; margin-top: 2px">{{r.customer}} · {{r.due}} · RM {{r.fee}}</div>
+                </div>
+                <span style="{{r.badgeStyle}}">{{r.badge}}</span>
+              </div>
+            </template>
+          </div>
+        </section>
+
+      </div>
+    </template>
+
+    <!-- ============ 顾客 ============ -->
+    <template data-sc="if" value="{{isCust}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+          <div>
+            <h1 style="margin: 0; font-size: 26px">顾客资料库</h1>
+            <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">{{custCount}} 位顾客 · 从 Excel「Address」表导入</p>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px">
+            <label for="csearch" style="position: absolute; left: -9999px">搜索顾客</label>
+            <input id="csearch" value="{{q}}" onChange="{{onQ}}" placeholder="搜索公司名 / 电话 / 网站" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; min-width: 240px; background: #FFFFFF">
+            <button type="button" onClick="{{toggleNewCust}}" style="padding: 10px 16px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">+ 新增顾客</button>
+          </div>
+        </div>
+
+        <template data-sc="if" value="{{showNewCust}}" hint-placeholder-val="{{ false }}">
+          <section style="background: #FFFFFF; border: 1px solid #1E7A62; border-radius: 10px; padding: 20px">
+            <h2 style="margin: 0 0 16px; font-size: 17px">新增顾客</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px">
+              <template data-sc="for" list="{{ncFields}}" as="f" hint-placeholder-count="7">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">{{f.label}}
+                  <input value="{{f.value}}" onChange="{{f.onChange}}" placeholder="{{f.ph}}" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+                </label>
+              </template>
+            </div>
+
+            <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid #E5E7EB">
+              <h3 style="margin: 0 0 4px; font-size: 15px">续约项目</h3>
+              <p style="margin: 0 0 12px; font-size: 13px; color: #4B5563">填了到期日的项目，保存后会自动出现在「续约」页，并在到期前 30 天提醒</p>
+              <div style="display: flex; flex-direction: column; gap: 12px">
+                <template data-sc="for" list="{{ncRows}}" as="r" hint-placeholder-count="1">
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; padding: 12px; background: #F7F8FA; border-radius: 8px">
+                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151; grid-column: span 2">项目 {{r.n}}
+                      <input value="{{r.item}}" onChange="{{r.onItem}}" placeholder="www.xxx.com website hosting" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF">
+                    </label>
+                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">每年收费 (MYR)
+                      <input type="number" value="{{r.fee}}" onChange="{{r.onFee}}" placeholder="400" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono',monospace">
+                    </label>
+                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Hosting 成本 (MYR)
+                      <input type="number" value="{{r.cost}}" onChange="{{r.onCost}}" placeholder="70" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono',monospace">
+                    </label>
+                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">到期日
+                      <input type="date" value="{{r.due}}" onChange="{{r.onDue}}" style="padding: 9px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF">
+                    </label>
+                    <template data-sc="if" value="{{r.canRemove}}" hint-placeholder-val="{{ false }}">
+                      <button type="button" onClick="{{r.remove}}" style="padding: 10px 12px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">移除</button>
+                    </template>
+                  </div>
+                </template>
+              </div>
+              <button type="button" onClick="{{addRenRow}}" style="margin-top: 10px; padding: 8px 12px; background: #FFFFFF; color: #1E7A62; border: 1px dashed #1E7A62; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">+ 再加一个续约项目</button>
+            </div>
+
+            <template data-sc="if" value="{{hasNcErr}}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="margin-top: 14px; padding: 10px 12px; background: #FDECEC; color: #9B1C1C; border-radius: 6px; font-size: 13px">{{ncErr}}</div>
+            </template>
+            <div style="display: flex; gap: 10px; margin-top: 18px">
+              <button type="button" onClick="{{saveNew}}" style="padding: 10px 16px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">保存顾客</button>
+              <button type="button" onClick="{{toggleNewCust}}" style="padding: 10px 16px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; cursor: pointer">取消</button>
+            </div>
+          </section>
+        </template>
+
+        <template data-sc="if" value="{{hasNcMsg}}" hint-placeholder-val="{{ false }}">
+          <div role="status" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; background: #DDF2EA; color: #11603F; border-radius: 8px; font-size: 14px">
+            <span>✓ {{ncMsg}}</span>
+            <div style="display: flex; gap: 8px">
+              <button type="button" onClick="{{goRenewFromMsg}}" style="padding: 6px 12px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">去续约页看看</button>
+              <button type="button" onClick="{{closeMsg}}" aria-label="关闭" style="padding: 6px 10px; background: transparent; color: #11603F; border: 0; font: inherit; font-size: 13px; cursor: pointer">关闭</button>
+            </div>
+          </div>
+        </template>
+
+        <template data-sc="if" value="{{editing}}" hint-placeholder-val="{{ false }}">
+          <section style="background: #FFFFFF; border: 1px solid #1E7A62; border-radius: 10px; padding: 20px">
+            <h2 style="margin: 0 0 16px; font-size: 17px">编辑顾客 · {{editTitle}}</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px">
+              <template data-sc="for" list="{{editFields}}" as="f" hint-placeholder-count="4">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">{{f.label}}
+                  <input value="{{f.value}}" onChange="{{f.onChange}}" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+                </label>
+              </template>
+            </div>
+
+            <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid #E5E7EB">
+              <h3 style="margin: 0 0 4px; font-size: 15px">续约项目</h3>
+              <p style="margin: 0 0 12px; font-size: 13px; color: #4B5563">改收费、成本或到期日，保存后续约页和提醒会一起更新</p>
+              <div style="display: flex; flex-direction: column; gap: 12px">
+                <template data-sc="for" list="{{editRows}}" as="r" hint-placeholder-count="2">
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; padding: 12px; background: #F7F8FA; border-radius: 8px">
+                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151; grid-column: span 2">项目 {{r.n}}
+                      <input value="{{r.item}}" onChange="{{r.onItem}}" placeholder="www.xxx.com website hosting" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF">
+                    </label>
+                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">每年收费 (MYR)
+                      <input type="number" value="{{r.fee}}" onChange="{{r.onFee}}" placeholder="400" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono',monospace">
+                    </label>
+                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Hosting 成本 (MYR)
+                      <input type="number" value="{{r.cost}}" onChange="{{r.onCost}}" placeholder="70" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono',monospace">
+                    </label>
+                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">到期日
+                      <input type="date" value="{{r.due}}" onChange="{{r.onDue}}" style="padding: 9px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF">
+                    </label>
+                    <button type="button" onClick="{{r.remove}}" style="padding: 10px 12px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">移除</button>
+                  </div>
+                </template>
+              </div>
+              <button type="button" onClick="{{addEditRow}}" style="margin-top: 10px; padding: 8px 12px; background: #FFFFFF; color: #1E7A62; border: 1px dashed #1E7A62; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">+ 再加一个续约项目</button>
+            </div>
+
+            <template data-sc="if" value="{{hasEditErr}}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="margin-top: 14px; padding: 10px 12px; background: #FDECEC; color: #9B1C1C; border-radius: 6px; font-size: 13px">{{editErr}}</div>
+            </template>
+            <div style="display: flex; gap: 10px; margin-top: 18px">
+              <button type="button" onClick="{{saveEdit}}" style="padding: 10px 16px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">保存修改</button>
+              <button type="button" onClick="{{cancelEdit}}" style="padding: 10px 16px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; cursor: pointer">取消</button>
+            </div>
+          </section>
+        </template>
+
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 8px 8px 0">
+          <div style="overflow-x: auto">
+            <table>
+              <thead><tr><th>编号</th><th>公司 / 顾客</th><th>地址</th><th>电话</th><th>动作</th></tr></thead>
+              <tbody>
+                <template data-sc="for" list="{{customers}}" as="c" hint-placeholder-count="8">
+                  <tr>
+                    <td style="font-family: 'IBM Plex Mono',monospace; color: #6B7280">{{c.id}}</td>
+                    <td><button type="button" onClick="{{c.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left">{{c.name}}</button><div style="font-size: 12px; font-weight: 400; color: #6B7280">{{c.alias}}</div></td>
+                    <td style="white-space: normal; min-width: 260px; font-size: 13px; color: #374151">{{c.addr}}</td>
+                    <td>{{c.phone}}</td>
+                    <td>
+                      <template data-sc="if" value="{{c.notConfirm}}" hint-placeholder-val="{{ true }}">
+                        <div style="display: flex; gap: 6px">
+                          <button type="button" onClick="{{c.onEdit}}" style="padding: 6px 10px; background: #FFFFFF; color: #1E7A62; border: 1px solid #1E7A62; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">编辑</button>
+                          <button type="button" onClick="{{c.onDel}}" style="padding: 6px 10px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">删除</button>
+                        </div>
+                      </template>
+                      <template data-sc="if" value="{{c.isConfirm}}" hint-placeholder-val="{{ false }}">
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #9B1C1C">
+                          <span>确定删除？续约记录也会一起移除</span>
+                          <div style="display: flex; gap: 6px">
+                            <button type="button" onClick="{{c.doDel}}" style="padding: 6px 10px; background: #B42318; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">确定删除</button>
+                            <button type="button" onClick="{{c.cancelDel}}" style="padding: 6px 10px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">取消</button>
+                          </div>
+                        </div>
+                      </template>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </template>
+
+    <!-- ============ 全部交易 ============ -->
+    <template data-sc="if" value="{{isTxn}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 14px">
+        <div>
+          <h1 style="margin: 0; font-size: 26px">全部交易</h1>
+          <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">所有 Invoice 和开销放在一起，按月份分组 · 按单号可以打开 Invoice</p>
+        </div>
+
+        <section aria-label="筛选" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 14px 18px; display: flex; flex-direction: column; gap: 12px">
+          <div role="group" aria-label="年份" style="display: flex; flex-wrap: wrap; gap: 6px">
+            <template data-sc="for" list="{{tPresets}}" as="b" hint-placeholder-count="10">
+              <button type="button" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
+            </template>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151">从
+              <input type="date" value="{{tFrom}}" onChange="{{onTFrom}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151">到
+              <input type="date" value="{{tTo}}" onChange="{{onTTo}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px">
+            </label>
+            <div role="group" aria-label="类型" style="display: flex; gap: 6px">
+              <template data-sc="for" list="{{tTypes}}" as="b" hint-placeholder-count="3">
+                <button type="button" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
+              </template>
+            </div>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151; flex: 1 1 200px">搜索
+              <input value="{{tQ}}" onChange="{{onTQ}}" placeholder="内容 / 顾客 / 单号" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px">
+            </label>
+            <button type="button" onClick="{{tSortToggle}}" style="padding: 8px 12px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">{{tSortLabel}}</button>
+          </div>
+        </section>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px">
+          <template data-sc="for" list="{{tKpis}}" as="k" hint-placeholder-count="5">
+            <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px 14px">
+              <div style="font-size: 12px; color: #4B5563">{{k.label}}</div>
+              <div style="{{k.valStyle}}">{{k.value}}</div>
+            </div>
+          </template>
+        </div>
+
+        <section style="background: #FFFFFF; border: 1px solid #D1D5DB; border-radius: 8px; overflow: hidden">
+          <template data-sc="if" value="{{tEmpty}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 28px; text-align: center; color: #6B7280; font-size: 14px">没有符合的交易</div>
+          </template>
+          <div style="overflow-x: auto">
+            <table style="font-size: 13px">
+              <thead>
+                <tr style="background: #16202A">
+                  <th style="color: #FFFFFF; padding: 9px 10px; border: 0">日期</th>
+                  <th style="color: #FFFFFF; padding: 9px 10px; border: 0">内容</th>
+                  <th style="color: #FFFFFF; padding: 9px 10px; border: 0">顾客</th>
+                  <th style="color: #FFFFFF; padding: 9px 10px; border: 0">来源 / 类别</th>
+                  <th style="color: #FFFFFF; padding: 9px 10px; border: 0; text-align: right">收入</th>
+                  <th style="color: #FFFFFF; padding: 9px 10px; border: 0; text-align: right">成本</th>
+                  <th style="color: #FFFFFF; padding: 9px 10px; border: 0; text-align: right">开销</th>
+                  <th style="color: #FFFFFF; padding: 9px 10px; border: 0; text-align: right">净额</th>
+                  <th style="color: #FFFFFF; padding: 9px 10px; border: 0; text-align: right">累计</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template data-sc="for" list="{{tRows}}" as="r" hint-placeholder-count="20">
+                  <template data-sc="if" value="{{r.isHead}}" hint-placeholder-val="{{ false }}">
+                    <tr style="background: #EEF8F4">
+                      <td colspan="4" style="padding: 8px 10px; font-weight: 700; color: #155A48; border-top: 2px solid #BFE3D5">{{r.label}} <span style="font-weight: 400; color: #4B5563; margin-left: 6px">{{r.count}} 笔</span></td>
+                      <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #155A48; border-top: 2px solid #BFE3D5">{{r.inc}}</td>
+                      <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #4B5563; border-top: 2px solid #BFE3D5">{{r.cost}}</td>
+                      <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #9B1C1C; border-top: 2px solid #BFE3D5">{{r.exp}}</td>
+                      <td style="{{r.netStyle}}">{{r.net}}</td>
+                      <td style="border-top: 2px solid #BFE3D5"></td>
+                    </tr>
+                  </template>
+                  <template data-sc="if" value="{{r.isRow}}" hint-placeholder-val="{{ true }}">
+                    <tr style="{{r.rowStyle}}">
+                      <td style="padding: 6px 10px; font-family: 'IBM Plex Mono',monospace; color: #4B5563">{{r.date}}</td>
+                      <td style="padding: 6px 10px; white-space: normal; min-width: 220px">{{r.item}}<div><template data-sc="if" value="{{r.hasDoc}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{r.openDoc}}" style="padding: 0; border: 0; background: none; font-size: 11px; color: #1E7A62; font-family: 'IBM Plex Mono',monospace; text-decoration: underline; cursor: pointer">{{r.no}}</button></template></div></td>
+                      <td style="padding: 6px 10px; white-space: normal; min-width: 140px">
+                        <template data-sc="if" value="{{r.hasLink}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{r.openCust}}" style="padding: 0; border: 0; background: none; font: inherit; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left">{{r.cust}}</button></template>
+                        <template data-sc="if" value="{{r.noLink}}" hint-placeholder-val="{{ true }}"><span style="color: #9CA3AF">{{r.cust}}</span></template>
+                      </td>
+                      <td style="padding: 6px 10px"><span style="{{r.tagStyle}}">{{r.tag}}</span></td>
+                      <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; color: #11603F">{{r.inc}}</td>
+                      <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; color: #6B7280">{{r.cost}}</td>
+                      <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; color: #9B1C1C">{{r.exp}}</td>
+                      <td style="{{r.netStyle}}">{{r.net}}</td>
+                      <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; color: #374151">{{r.run}}</td>
+                    </tr>
+                  </template>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </template>
+
+    <!-- ============ 顾客详情 ============ -->
+    <template data-sc="if" value="{{isCustDetail}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <button type="button" onClick="{{goBack}}" style="align-self: flex-start; padding: 8px 0; border: 0; background: none; color: #1E7A62; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">{{backLabel}}</button>
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px">
+          <div>
+            <div style="font-family: 'IBM Plex Mono',monospace; font-size: 13px; color: #6B7280">{{det.id}}</div>
+            <h1 style="margin: 4px 0 0; font-size: 26px">{{det.name}}</h1>
+            <div style="font-size: 13px; color: #6B7280; margin-top: 2px">{{det.alias}}</div>
+            <div style="font-size: 14px; color: #374151; margin-top: 10px; max-width: 560px">{{det.addr}}</div>
+            <div style="font-size: 14px; color: #374151; margin-top: 4px">电话：{{det.phone}}</div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px">
+            <button type="button" onClick="{{det.onEdit}}" style="padding: 10px 16px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; cursor: pointer">编辑资料</button>
+            <button type="button" onClick="{{det.newQuo}}" style="padding: 10px 16px; background: #FFFFFF; color: #1E7A62; border: 1px solid #1E7A62; border-radius: 6px; font: inherit; cursor: pointer">+ Quotation</button>
+            <button type="button" onClick="{{det.newInv}}" style="padding: 10px 16px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">+ Invoice</button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px">
+          <template data-sc="for" list="{{det.kpis}}" as="k" hint-placeholder-count="4">
+            <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 16px 18px">
+              <div style="font-size: 13px; color: #4B5563">{{k.label}}</div>
+              <div style="font-family: 'IBM Plex Mono',monospace; font-size: 20px; font-weight: 500; margin-top: 6px">{{k.value}}</div>
+            </div>
+          </template>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+          <section style="flex: 999 1 560px; min-width: 0; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+            <h2 style="margin: 0 0 4px; font-size: 17px">来往记录</h2>
+            <p style="margin: 0 0 16px; font-size: 12px; color: #6B7280">Quotation、Invoice、收款、开销，按日期排列（最近 {{det.shown}} 条）</p>
+            <template data-sc="if" value="{{det.noEvents}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 24px; text-align: center; color: #6B7280; font-size: 14px; background: #F7F8FA; border-radius: 8px">还没有任何来往记录</div>
+            </template>
+            <div style="display: flex; flex-direction: column">
+              <template data-sc="for" list="{{det.events}}" as="e" hint-placeholder-count="5">
+                <div style="display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid #EEF0F2">
+                  <div style="width: 84px; flex-shrink: 0; font-size: 13px; color: #4B5563">{{e.date}}</div>
+                  <div style="flex: 1; min-width: 0">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+                      <span style="{{e.typeStyle}}">{{e.type}}</span>
+                      <span style="font-family: 'IBM Plex Mono',monospace; font-size: 12px; color: #6B7280">{{e.no}}</span>
+                      <template data-sc="if" value="{{e.hasStatus}}" hint-placeholder-val="{{ true }}"><span style="{{e.statusStyle}}">{{e.status}}</span></template>
+                    </div>
+                    <div style="font-size: 14px; margin-top: 6px">{{e.desc}}</div>
+                  </div>
+                  <div style="font-family: 'IBM Plex Mono',monospace; font-size: 14px; white-space: nowrap">{{e.amount}}</div>
+                </div>
+              </template>
+            </div>
+          </section>
+
+          <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+            <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+              <h2 style="margin: 0 0 12px; font-size: 17px">Invoice / Quotation（{{det.docCount}}）</h2>
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <template data-sc="for" list="{{det.docs}}" as="d" hint-placeholder-count="3">
+                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #EEF0F2; border-radius: 8px">
+                    <div style="min-width: 0">
+                      <div style="font-family: 'IBM Plex Mono',monospace; font-size: 13px">{{d.no}}</div>
+                      <div style="font-size: 12px; color: #6B7280">{{d.date}} · RM {{d.amount}}</div>
+                    </div>
+                    <div style="display: flex; gap: 6px">
+                    <button type="button" onClick="{{d.open}}" style="padding: 8px 10px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">打开</button>
+                    <button type="button" onClick="{{d.onDl}}" aria-label="{{d.dlLabel}}" style="display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: #EEF8F4; color: #155A48; border: 0; border-radius: 6px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M5 21h14"></path></svg>PDF
+                    </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </section>
+            <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+              <h2 style="margin: 0 0 12px; font-size: 17px">续约项目</h2>
+              <template data-sc="if" value="{{det.hasRenew}}" hint-placeholder-val="{{ true }}">
+                <div style="display: flex; flex-direction: column; gap: 10px">
+                  <template data-sc="for" list="{{det.renew}}" as="r" hint-placeholder-count="2">
+                    <div style="padding: 10px 12px; background: #F7F8FA; border-radius: 8px; font-size: 13px">
+                      <div style="font-weight: 600">{{r.item}}</div>
+                      <div style="color: #4B5563; margin-top: 4px">到期 {{r.due}} · 收 RM {{r.fee}} · 成本 RM {{r.cost}}</div>
+                      <div style="color: #6B7280; font-size: 12px; margin-top: 2px">{{r.remark}}</div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </section>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ============ 分红 ============ -->
+    <template data-sc="if" value="{{isDiv}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px">
+          <div>
+            <h1 style="margin: 0; font-size: 26px">分红明细</h1>
+            <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">每张 Invoice 开出时就计入 · 2026 年起扣公司 10%，2025 年没扣</p>
+          </div>
+          <label style="font-size: 13px; color: #4B5563; display: flex; align-items: center; gap: 8px">月份
+            <select style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF">
+              <option>2026年10月</option><option>2026年9月</option><option>2026年8月</option><option>2026全年</option>
+            </select>
+          </label>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px">
+          <div style="background: #FFFFFF; border: 1px solid #BFE3D5; border-radius: 10px; padding: 18px 20px">
+            <div style="font-size: 13px; color: #155A48; font-weight: 600">公司留存</div>
+            <div style="font-family: 'IBM Plex Mono',monospace; font-size: 22px; margin-top: 6px">{{sal.coFinal}}</div>
+            <div style="font-size: 12px; color: #4B5563; margin-top: 8px; line-height: 1.6">分账 {{tot.co}}<br>补贴月薪 −{{sal.fromCo}}<br>其他开销 −{{fund.exp}}</div>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #F1D5C3; border-radius: 10px; padding: 18px 20px">
+            <div style="font-size: 13px; color: #8A3B0E; font-weight: 600">Bernice</div>
+            <div style="font-family: 'IBM Plex Mono',monospace; font-size: 22px; margin-top: 6px">{{sal.bFinal}}</div>
+            <div style="font-size: 12px; color: #4B5563; margin-top: 8px; line-height: 1.6">分账 {{tot.bernice}}<br>月薪分摊 −{{sal.bDed}}<br><strong>连月薪 RM 500 共 {{sal.bTake}}</strong></div>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #C9D6EE; border-radius: 10px; padding: 18px 20px">
+            <div style="font-size: 13px; color: #1D4485; font-weight: 600">Balon</div>
+            <div style="font-family: 'IBM Plex Mono',monospace; font-size: 22px; margin-top: 6px">{{sal.baFinal}}</div>
+            <div style="font-size: 12px; color: #4B5563; margin-top: 8px; line-height: 1.6">分账 {{tot.balon}}<br>月薪分摊 −{{sal.baDed}}</div>
+          </div>
+        </div>
+
+        <div role="group" aria-label="按人筛选" style="display: flex; flex-wrap: wrap; gap: 8px">
+          <template data-sc="for" list="{{divBtns}}" as="b" hint-placeholder-count="4">
+            <button type="button" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
+          </template>
+        </div>
+
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 8px">
+          <template data-sc="if" value="{{divAll}}" hint-placeholder-val="{{ true }}">
+            <div style="overflow-x: auto">
+              <table>
+                <thead><tr><th>日期</th><th>Invoice #</th><th>项目 / 顾客</th><th>来源</th><th style="text-align: right">净利</th><th style="text-align: right">公司留存</th><th style="text-align: right">Bernice</th><th style="text-align: right">Balon</th></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{projects}}" as="p" hint-placeholder-count="4">
+                    <tr>
+                      <td>{{p.date}}</td>
+                      <td><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 13px; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{p.inv}}</button></td>
+                      <td style="white-space: normal; min-width: 200px"><div style="font-weight: 500">{{p.title}}</div><div style="font-size: 12px; color: #6B7280">{{p.customer}}</div></td>
+                      <td><span style="{{p.srcStyle}}">{{p.src}}</span></td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.net}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; color: #155A48">{{p.co}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; color: #8A3B0E">{{p.bernice}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; color: #1D4485">{{p.balon}}</td>
+                    </tr>
+                  </template>
+                  <tr style="background: #F7F8FA">
+                    <td colspan="4" style="font-weight: 700">合计（扣月薪前）</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600">{{tot.netN}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #155A48">{{tot.coN}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #8A3B0E">{{tot.bernN}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #1D4485">{{tot.balN}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <template data-sc="if" value="{{divOne}}" hint-placeholder-val="{{ false }}">
+            <div style="overflow-x: auto">
+              <table>
+                <thead><tr><th>日期</th><th>Invoice #</th><th>项目 / 顾客</th><th>来源</th><th style="text-align: right">净利</th><th>怎么算</th><th style="text-align: right">{{divLabel}} 分红</th></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{divOneRows}}" as="p" hint-placeholder-count="4">
+                    <tr>
+                      <td>{{p.date}}</td>
+                      <td><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 13px; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{p.inv}}</button></td>
+                      <td style="white-space: normal; min-width: 200px"><div style="font-weight: 500">{{p.title}}</div><div style="font-size: 12px; color: #6B7280">{{p.customer}}</div></td>
+                      <td><span style="{{p.srcStyle}}">{{p.src}}</span></td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.net}}</td>
+                      <td style="font-size: 13px; color: #4B5563">{{p.how}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600">{{p.val}}</td>
+                    </tr>
+                  </template>
+                  <tr style="background: #F7F8FA">
+                    <td colspan="6" style="font-weight: 700">{{divLabel}} 合计（扣月薪前）</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700">{{divOneTotal}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </section>
+      </div>
+    </template>
+
+    <!-- ============ 项目 & 分账 ============ -->
+    <template data-sc="if" value="{{isProj}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <div>
+          <h1 style="margin: 0; font-size: 26px">项目 &amp; 利润分账</h1>
+          <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">净利润 = 收费 − 直接成本 → 按来源分账 · 2026 起扣公司 10% · 2025 不扣 · 2020–2024 年底按余额 Bernice 40% / Balon 60%</p>
+        </div>
+
+        <section aria-label="日期筛选" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">从
+            <input type="date" value="{{pFrom}}" onChange="{{onFrom}}" style="padding: 9px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">到
+            <input type="date" value="{{pTo}}" onChange="{{onTo}}" style="padding: 9px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+          </label>
+          <div role="group" aria-label="快速选择" style="display: flex; flex-wrap: wrap; gap: 8px">
+            <template data-sc="for" list="{{presets}}" as="b" hint-placeholder-count="4">
+              <button type="button" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
+            </template>
+          </div>
+          <div style="margin-left: auto; font-size: 13px; color: #4B5563">{{pRange}} · 共 <strong>{{pCount}}</strong> 个项目</div>
+        </section>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px">
+          <template data-sc="for" list="{{pKpis}}" as="k" hint-placeholder-count="6">
+            <div style="{{k.box}}">
+              <div style="{{k.labelStyle}}">{{k.label}}</div>
+              <div style="font-family: 'IBM Plex Mono',monospace; font-size: 19px; font-weight: 500; margin-top: 6px">{{k.value}}</div>
+            </div>
+          </template>
+        </div>
+
+        <template data-sc="if" value="{{hasOld}}" hint-placeholder-val="{{ false }}">
+          <div role="note" style="padding: 10px 14px; background: #F7F8FA; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 13px; color: #374151">{{oldNote}}</div>
+        </template>
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+          <h2 style="margin: 0 0 12px; font-size: 17px">项目明细</h2>
+          <template data-sc="if" value="{{pEmpty}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 28px; text-align: center; color: #6B7280; font-size: 14px; background: #F7F8FA; border-radius: 8px">这段日期没有项目</div>
+          </template>
+          <template data-sc="if" value="{{pHas}}" hint-placeholder-val="{{ true }}">
+            <div style="overflow-x: auto">
+              <table>
+                <thead><tr><th>日期</th><th>Invoice #</th><th>项目</th><th>顾客</th><th>来源</th><th style="text-align: right">收费</th><th style="text-align: right">成本</th><th style="text-align: right">净利</th><th style="text-align: right">公司 10%</th><th style="text-align: right">Bernice</th><th style="text-align: right">Balon</th><th style="text-align: right">已收</th><th style="text-align: right">未收</th><th>收款</th></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{plist}}" as="p" hint-placeholder-count="6">
+                    <tr>
+                      <td>{{p.date}}</td>
+                      <td><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 13px; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{p.inv}}</button></td>
+                      <td style="white-space: normal; min-width: 200px"><div style="font-weight: 500">{{p.title}}</div><div style="font-size: 12px; color: #6B7280">{{p.id}}</div></td>
+                      <td style="white-space: normal; min-width: 140px">{{p.customer}}</td>
+                      <td><span style="{{p.srcStyle}}">{{p.src}}</span></td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.sale}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.cost}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600">{{p.net}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; color: #155A48">{{p.co}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; color: #8A3B0E">{{p.bernice}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; color: #1D4485">{{p.balon}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.paid}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.owing}}</td>
+                      <td><span style="{{p.payStyle}}">{{p.pay}}</span></td>
+                    </tr>
+                  </template>
+                  <tr style="background: #F7F8FA">
+                    <td colspan="5" style="font-weight: 700">合计</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600">{{ptot.sale}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600">{{ptot.cost}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600">{{ptot.net}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #155A48">{{ptot.co}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #8A3B0E">{{ptot.b}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #1D4485">{{ptot.ba}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600">{{ptot.paid}}</td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600">{{ptot.owing}}</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </section>
+
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+          <h2 style="margin: 0 0 4px; font-size: 17px">分账计算器</h2>
+          <p style="margin: 0 0 16px; font-size: 13px; color: #4B5563">报价前先算一算：选来源、输入数字，马上看到每人拿多少</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 20px">
+            <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+              <div>
+                <div style="font-size: 13px; color: #374151; margin-bottom: 6px">项目来源</div>
+                <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+                  <template data-sc="for" list="{{srcBtns}}" as="b" hint-placeholder-count="4">
+                    <button type="button" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
+                  </template>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">收费金额 (MYR)
+                  <input type="number" value="{{saleStr}}" onChange="{{onSale}}" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; font-family: 'IBM Plex Mono',monospace">
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">直接成本 (MYR)
+                  <input type="number" value="{{costStr}}" onChange="{{onCost}}" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; font-family: 'IBM Plex Mono',monospace">
+                </label>
+              </div>
+            </div>
+            <div style="flex: 1 1 320px; min-width: 0; padding: 16px; background: #F7F8FA; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+              <div style="display: flex; justify-content: space-between"><span>净利润</span><strong style="font-family: 'IBM Plex Mono',monospace">{{calc.net}}</strong></div>
+              <div style="font-size: 12px; color: #4B5563; white-space: pre-line; line-height: 1.6">{{calc.formula}}</div>
+              <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px solid #E5E7EB"><span style="color: #155A48; font-weight: 600">公司 10%</span><strong style="font-family: 'IBM Plex Mono',monospace">{{calc.co}}</strong></div>
+              <div style="display: flex; justify-content: space-between"><span style="color: #8A3B0E; font-weight: 600">Bernice</span><strong style="font-family: 'IBM Plex Mono',monospace">{{calc.bernice}}</strong></div>
+              <div style="display: flex; justify-content: space-between"><span style="color: #1D4485; font-weight: 600">Balon</span><strong style="font-family: 'IBM Plex Mono',monospace">{{calc.balon}}</strong></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </template>
+
+    <!-- ============ 其他开销 ============ -->
+    <template data-sc="if" value="{{isExp}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <div>
+          <h1 style="margin: 0; font-size: 26px">其他开销</h1>
+          <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">送顾客礼物、请吃饭、软件订阅等 · 从公司 10% 留存扣，不影响 Bernice 和 Balon 的分红</p>
+        </div>
+
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px">
+            <h2 style="margin: 0; font-size: 17px">新增一笔开销</h2>
+            <template data-sc="if" value="{{expFormOpen}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{toggleExpForm}}" aria-expanded="true" style="display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: #F7F8FA; color: #374151; border: 1px solid #E5E7EB; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"></path></svg>收起</button></template>
+            <template data-sc="if" value="{{expFormClosed}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{toggleExpForm}}" aria-expanded="false" style="display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: #F7F8FA; color: #374151; border: 1px solid #E5E7EB; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>展开</button></template>
+          </div>
+          <template data-sc="if" value="{{expFormOpen}}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top: 14px">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end">
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">日期
+              <input type="date" value="{{ef.date}}" onChange="{{ef.onDate}}" style="padding: 9px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151; grid-column: span 2">内容 *
+              <input value="{{ef.desc}}" onChange="{{ef.onDesc}}" placeholder="例如：中秋礼盒 ×5" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">类别
+              <select value="{{ef.cat}}" onChange="{{ef.onCat}}" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF">
+                <template data-sc="for" list="{{expCats}}" as="c" hint-placeholder-count="5"><option value="{{c.n}}">{{c.n}}</option></template>
+              </select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">金额 (MYR) *
+              <input type="number" value="{{ef.amount}}" onChange="{{ef.onAmount}}" placeholder="0.00" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; font-family: 'IBM Plex Mono',monospace">
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151; grid-column: span 2">相关顾客（可不填）
+              <select value="{{ef.cust}}" onChange="{{ef.onCust}}" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF">
+                <option value="">— 不关联顾客 —</option>
+                <template data-sc="for" list="{{custOpts}}" as="o" hint-placeholder-count="28"><option value="{{o.v}}">{{o.name}}</option></template>
+              </select>
+            </label>
+            <button type="button" onClick="{{ef.save}}" style="padding: 11px 16px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">+ 记录开销</button>
+          </div>
+          <template data-sc="if" value="{{ef.hasErr}}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="margin-top: 12px; padding: 10px 12px; background: #FDECEC; color: #9B1C1C; border-radius: 6px; font-size: 13px">{{ef.err}}</div>
+          </template>
+          </div>
+          </template>
+        </section>
+
+        <section aria-label="日期筛选" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">从
+            <input type="date" value="{{eFrom}}" onChange="{{onEFrom}}" style="padding: 9px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">到
+            <input type="date" value="{{eTo}}" onChange="{{onETo}}" style="padding: 9px 12px; border: 1px solid #D1D5DB; border-radius: 6px">
+          </label>
+          <div role="group" aria-label="快速选择" style="display: flex; flex-wrap: wrap; gap: 8px">
+            <template data-sc="for" list="{{ePresets}}" as="b" hint-placeholder-count="4">
+              <button type="button" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
+            </template>
+          </div>
+          <div style="margin-left: auto; font-size: 14px; color: #374151">合计 <strong style="font-family: 'IBM Plex Mono',monospace">{{expTotal}}</strong> · {{expCount}} 笔</div>
+        </section>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px">
+          <template data-sc="for" list="{{expByCat}}" as="k" hint-placeholder-count="5">
+            <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 14px 16px">
+              <div style="font-size: 13px; color: #4B5563">{{k.cat}}</div>
+              <div style="font-family: 'IBM Plex Mono',monospace; font-size: 18px; margin-top: 4px">{{k.total}}</div>
+            </div>
+          </template>
+        </div>
+
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 8px">
+          <template data-sc="if" value="{{expEmpty}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 28px; text-align: center; color: #6B7280; font-size: 14px">这段日期没有开销</div>
+          </template>
+          <template data-sc="if" value="{{expHas}}" hint-placeholder-val="{{ true }}">
+            <div style="overflow-x: auto">
+              <table>
+                <thead><tr><th>日期</th><th>内容</th><th>类别</th><th>相关顾客</th><th style="text-align: right">金额 (MYR)</th><th></th></tr></thead>
+                <tbody>
+                  <template data-sc="for" list="{{expRows}}" as="x" hint-placeholder-count="4">
+                    <tr>
+                      <td>{{x.date}}</td>
+                      <td style="white-space: normal; min-width: 200px; font-weight: 500">{{x.desc}}</td>
+                      <td><span style="{{x.catStyle}}">{{x.cat}}</span></td>
+                      <td style="white-space: normal; color: #374151">{{x.cust}}</td>
+                      <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{x.amount}}</td>
+                      <td>
+                        <template data-sc="if" value="{{x.notConfirm}}" hint-placeholder-val="{{ true }}">
+                          <button type="button" onClick="{{x.onDel}}" style="padding: 6px 10px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">删除</button>
+                        </template>
+                        <template data-sc="if" value="{{x.isConfirm}}" hint-placeholder-val="{{ false }}">
+                          <div style="display: flex; gap: 6px">
+                            <button type="button" onClick="{{x.doDel}}" style="padding: 6px 10px; background: #B42318; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">确定删除</button>
+                            <button type="button" onClick="{{x.cancel}}" style="padding: 6px 10px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">取消</button>
+                          </div>
+                        </template>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </section>
+      </div>
+    </template>
+
+    <!-- ============ 已开 Quotation ============ -->
+    <template data-sc="if" value="{{isQuoList}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+          <div>
+            <h1 style="margin: 0; font-size: 26px">已开 Quotation</h1>
+            <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">共 {{quoCount}} 张 · 顾客接受后按「转 Invoice」，内容不用重打 · 按单号可以编辑</p>
+          </div>
+          <button type="button" onClick="{{goNewQuo}}" style="padding: 10px 16px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">+ 新建 Quotation</button>
+        </div>
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 8px">
+          <div style="overflow-x: auto">
+            <table>
+              <thead><tr><th>日期</th><th>Quotation #</th><th>顾客</th><th style="text-align: right">金额 (MYR)</th><th>状态</th><th>动作</th></tr></thead>
+              <tbody>
+                <template data-sc="if" value="{{quoEmpty}}" hint-placeholder-val="{{ false }}">
+                  <tr><td colspan="6" style="padding: 28px; text-align: center; color: #6B7280">还没有开过 Quotation</td></tr>
+                </template>
+                <template data-sc="for" list="{{quotes}}" as="x" hint-placeholder-count="4">
+                  <tr>
+                    <td>{{x.date}}</td>
+                    <td><button type="button" onClick="{{x.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 13px; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{x.no}}</button></td>
+                    <td style="white-space: normal; min-width: 180px"><button type="button" onClick="{{x.openCust}}" style="padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left">{{x.customer}}</button></td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{x.amount}}</td>
+                    <td><span style="{{x.style}}">{{x.status}}</span></td>
+                    <td>
+                      <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                        <template data-sc="if" value="{{x.canConvert}}" hint-placeholder-val="{{ true }}">
+                          <button type="button" onClick="{{x.convert}}" style="padding: 6px 10px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">转 Invoice</button>
+                        </template>
+                        <button type="button" onClick="{{x.open}}" style="padding: 6px 10px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">编辑</button>
+                        <button type="button" onClick="{{x.onDl}}" aria-label="下载 Quotation PDF" style="display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: #EEF8F4; color: #155A48; border: 0; border-radius: 6px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M5 21h14"></path></svg>PDF
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </template>
+
+    <!-- ============ 下载 Invoice ============ -->
+    <template data-sc="if" value="{{isInvDl}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <div>
+          <h1 style="margin: 0; font-size: 26px">下载 Invoice</h1>
+          <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">一次下载整年开过的 Invoice，拿去报账</p>
+        </div>
+        <section aria-label="全年 Invoice 打包下载" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+            <div>
+              <h2 style="margin: 0; font-size: 17px">全年 Invoice 打包下载（报账用）</h2>
+              <p style="margin: 4px 0 0; font-size: 13px; color: #4B5563">下载一个 ZIP：每个月一个文件夹，里面是当月每张 Invoice 的 PDF，另附一份 Excel 可以打开的清单</p>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151">年份
+                <select value="{{zipYear}}" onChange="{{onZipYear}}" style="padding: 9px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-weight: 600">
+                  <template data-sc="for" list="{{zipYears}}" as="y" hint-placeholder-count="2"><option value="{{y.v}}">{{y.v}}</option></template>
+                </select>
+              </label>
+              <button type="button" onClick="{{dlYear}}" disabled="{{zipBusy}}" style="{{zipBtnStyle}}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M5 21h14"></path></svg>{{zipBtnLabel}}
+              </button>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 16px">
+            <template data-sc="for" list="{{zipMonths}}" as="m" hint-placeholder-count="12">
+              <div style="{{m.box}}">
+                <div style="font-size: 12px; font-weight: 600; color: #374151"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>{{m.folder}}</div>
+                <div style="font-size: 12px; color: #4B5563; margin-top: 4px">{{m.count}} 张</div>
+                <div style="font-family: 'IBM Plex Mono',monospace; font-size: 13px; margin-top: 2px">{{m.total}}</div>
+              </div>
+            </template>
+          </div>
+          <div style="margin-top: 12px; font-size: 13px; color: #374151">{{zipYear}} 年合计：<strong>{{zipCount}}</strong> 张 Invoice · <strong style="font-family: 'IBM Plex Mono',monospace">{{zipTotal}}</strong></div>
+        </section>
+      </div>
+    </template>
+
+    <!-- ============ Invoice / Quotation 编辑器 ============ -->
+    <template data-sc="if" value="{{isEditor}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 18px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+          <div>
+            <h1 style="margin: 0; font-size: 26px">{{ed.title}}</h1>
+            <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">{{ed.subtitle}}</p>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px">
+            <template data-sc="if" value="{{ed.isQuote}}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{goQuoList}}" style="padding: 10px 16px; background: #FFFFFF; color: #1E7A62; border: 1px solid #1E7A62; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">已开 Quotation（{{quoCount}}）→</button>
+            </template>
+            <button type="button" onClick="{{ed.reset}}" style="padding: 10px 16px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; cursor: pointer">+ 新建一张</button>
+          </div>
+        </div>
+
+        <section aria-label="单据" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 32px 36px">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px">
+            <div style="display: flex; gap: 16px; align-items: flex-start">
+              <img src="logo.png" alt="Webbalance logo" style="width: 72px; height: 72px">
+              <div>
+                <div style="font-weight: 700; font-size: 18px">WEBBALANCE SOLUTIONS <span style="font-weight: 400; font-size: 14px; color: #4B5563">(CA0366370-K)</span></div>
+                <div style="font-size: 13px; color: #374151; margin-top: 6px; white-space: pre-line; line-height: 1.55">UNIT 6, LEVEL 4, SETIAWALK MALL (BLOCK K),
+PERSIARAN WAWASAN, PUSAT BANDAR PUCHONG
+47160 PUCHONG SELANGOR
+EMAIL: bernice@webbalances.com · PHONE: 6010 831 2238</div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px">
+              <div style="font-size: 28px; font-weight: 700; letter-spacing: 1px; color: #1E7A62">{{ed.kindLabel}}</div>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #4B5563">DATE
+                <input type="date" value="{{ed.date}}" onChange="{{ed.onDate}}" style="padding: 7px 10px; border: 1px solid #D1D5DB; border-radius: 6px">
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #4B5563">{{ed.noLabel}}
+                <input value="{{ed.no}}" onChange="{{ed.onNo}}" style="padding: 7px 10px; border: 1px solid #D1D5DB; border-radius: 6px; font-family: 'IBM Plex Mono',monospace; width: 190px">
+              </label>
+              <template data-sc="if" value="{{ed.isQuote}}" hint-placeholder-val="{{ false }}">
+                <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #4B5563">VALID UNTIL
+                  <input type="date" value="{{ed.valid}}" onChange="{{ed.onValid}}" style="padding: 7px 10px; border: 1px solid #D1D5DB; border-radius: 6px">
+                </label>
+              </template>
+            </div>
+          </div>
+
+          <div style="margin-top: 26px; font-size: 12px; font-weight: 600; color: #4B5563; letter-spacing: .5px">{{ed.toLabel}}</div>
+          <label for="ed-cust" style="position: absolute; left: -9999px">选择顾客</label>
+          <select id="ed-cust" value="{{ed.custId}}" onChange="{{ed.onCust}}" style="margin-top: 6px; padding: 9px 10px; border: 1px solid #D1D5DB; border-radius: 6px; font-weight: 600; background: #FFFFFF; max-width: 100%; min-width: 280px">
+            <option value="">— 选择顾客 —</option>
+            <template data-sc="for" list="{{custOpts}}" as="o" hint-placeholder-count="30"><option value="{{o.v}}">{{o.name}}</option></template>
+          </select>
+          <div style="font-size: 13px; color: #374151; margin-top: 6px; white-space: pre-line; line-height: 1.55">{{ed.addr}}</div>
+
+          <template data-sc="if" value="{{ed.hasRenChips}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: #4B5563">带入续约项目：
+              <template data-sc="for" list="{{ed.renChips}}" as="c" hint-placeholder-count="2">
+                <button type="button" onClick="{{c.add}}" style="padding: 6px 10px; background: #EEF8F4; color: #155A48; border: 1px solid #BFE3D5; border-radius: 999px; font: inherit; font-size: 12px; cursor: pointer">+ {{c.label}}</button>
+              </template>
+            </div>
+          </template>
+
+          <div style="overflow-x: auto; margin-top: 20px">
+            <table>
+              <thead><tr><th style="min-width: 260px">DESCRIPTION</th><th style="text-align: right; width: 90px">QTY</th><th style="text-align: right; width: 130px">Price</th><th style="text-align: right; width: 150px">TOTAL AMOUNT(MYR)</th><th style="width: 40px"></th></tr></thead>
+              <tbody>
+                <template data-sc="for" list="{{ed.lines}}" as="l" hint-placeholder-count="2">
+                  <tr>
+                    <td style="padding: 8px 8px 8px 0"><input value="{{l.desc}}" onChange="{{l.onDesc}}" aria-label="项目描述" placeholder="项目描述" style="width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px"></td>
+                    <td style="padding: 8px 4px"><input type="number" min="0" step="any" value="{{l.qty}}" onChange="{{l.onQty}}" aria-label="数量" style="width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #D1D5DB; border-radius: 6px; text-align: right; font-family: 'IBM Plex Mono',monospace"></td>
+                    <td style="padding: 8px 4px"><input type="number" min="0" step="any" value="{{l.price}}" onChange="{{l.onPrice}}" aria-label="单价" style="width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #D1D5DB; border-radius: 6px; text-align: right; font-family: 'IBM Plex Mono',monospace"></td>
+                    <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; padding-top: 16px">{{l.amt}}</td>
+                    <td style="padding: 8px 0"><button type="button" onClick="{{l.remove}}" aria-label="删除这一行" style="padding: 8px 10px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">✕</button></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+          <button type="button" onClick="{{ed.addLine}}" style="margin-top: 10px; padding: 8px 12px; background: #FFFFFF; color: #1E7A62; border: 1px dashed #1E7A62; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer">+ 加一行</button>
+          <div style="display: flex; justify-content: flex-end; margin-top: 16px">
+            <div style="min-width: 280px; display: flex; justify-content: space-between; font-weight: 700; font-size: 17px; border-top: 2px solid #16202A; padding-top: 8px"><span>TOTAL(MYR)</span><span style="font-family: 'IBM Plex Mono',monospace">{{ed.total}}</span></div>
+          </div>
+
+          <template data-sc="if" value="{{ed.isInvoice}}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top: 22px; padding: 16px; background: #F7F8FA; border-radius: 8px">
+              <div style="font-size: 12px; color: #6B7280; margin-bottom: 10px">内部用（不会印在 Invoice 上）· 开出这张 Invoice 时就计入当月分账</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: end">
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">项目来源
+                  <select value="{{ed.source}}" onChange="{{ed.onSource}}" style="padding: 9px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-weight: 600">
+                    <template data-sc="for" list="{{srcOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.v}}">{{o.label}}</option></template>
+                  </select>
+                </label>
+                <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">直接成本 (MYR)
+                  <input type="number" min="0" step="any" value="{{ed.cost}}" onChange="{{ed.onCost}}" placeholder="0.00" style="padding: 9px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 140px; font-family: 'IBM Plex Mono',monospace">
+                </label>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; padding-bottom: 9px">
+                  <span>净利 <strong style="font-family: 'IBM Plex Mono',monospace">{{ed.net}}</strong></span>
+                  <span style="color: #155A48">公司 <strong style="font-family: 'IBM Plex Mono',monospace">{{ed.co}}</strong></span>
+                  <span style="color: #8A3B0E">Bernice <strong style="font-family: 'IBM Plex Mono',monospace">{{ed.b}}</strong></span>
+                  <span style="color: #1D4485">Balon <strong style="font-family: 'IBM Plex Mono',monospace">{{ed.ba}}</strong></span>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template data-sc="if" value="{{ed.isQuote}}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top: 22px; display: flex; flex-wrap: wrap; gap: 14px; align-items: end">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">状态
+                <select value="{{ed.status}}" onChange="{{ed.onStatus}}" style="padding: 9px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-weight: 600">
+                  <template data-sc="for" list="{{quoStatusOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.v}}">{{o.v}}</option></template>
+                </select>
+              </label>
+              <div style="font-size: 12px; color: #374151; white-space: pre-line; line-height: 1.6">Terms:
+1. 50% deposit upon confirmation, balance upon completion.
+2. This quotation is valid for 30 days.</div>
+            </div>
+          </template>
+
+          <div style="margin-top: 22px; font-size: 12px; color: #4B5563; text-align: center">This {{ed.kindWord}} is generated by computer. No signature needed</div>
+
+          <template data-sc="if" value="{{ed.hasErr}}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="margin-top: 14px; padding: 10px 12px; background: #FDECEC; color: #9B1C1C; border-radius: 6px; font-size: 13px">{{ed.err}}</div>
+          </template>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px">
+            <button type="button" onClick="{{ed.save}}" disabled="{{busy}}" style="padding: 11px 18px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">{{ed.saveLabel}}</button>
+            <button type="button" onClick="{{ed.pdf}}" style="padding: 11px 16px; background: #16202A; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; cursor: pointer">下载 PDF</button>
+            <template data-sc="if" value="{{ed.canConvert}}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{ed.convert}}" disabled="{{busy}}" style="padding: 11px 16px; background: #FFFFFF; color: #1E7A62; border: 1px solid #1E7A62; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">转成 Invoice</button>
+            </template>
+            <template data-sc="if" value="{{ed.isSaved}}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{ed.del}}" disabled="{{busy}}" style="margin-left: auto; padding: 11px 16px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; cursor: pointer">删除这张</button>
+            </template>
+          </div>
+        </section>
+
+        <template data-sc="if" value="{{ed.showPay}}" hint-placeholder-val="{{ false }}">
+          <section aria-label="收款" style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px">
+              <h2 style="margin: 0; font-size: 17px">收款</h2>
+              <span style="{{ed.payStyle}}">{{ed.payStatus}}</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 10px; font-size: 14px">
+              <span>总额 <strong style="font-family: 'IBM Plex Mono',monospace">{{ed.total}}</strong></span>
+              <span style="color: #11603F">已收 <strong style="font-family: 'IBM Plex Mono',monospace">{{ed.paid}}</strong></span>
+              <span style="color: #9B1C1C">未收 <strong style="font-family: 'IBM Plex Mono',monospace">{{ed.owing}}</strong></span>
+            </div>
+            <div style="display: flex; flex-direction: column; margin-top: 12px">
+              <template data-sc="for" list="{{ed.pays}}" as="p" hint-placeholder-count="1">
+                <div style="display: flex; align-items: center; gap: 14px; padding: 8px 0; border-bottom: 1px solid #EEF0F2; font-size: 14px">
+                  <span style="width: 96px; color: #4B5563">{{p.date}}</span>
+                  <span style="flex: 1; color: #6B7280; font-size: 13px">{{p.note}}</span>
+                  <span style="font-family: 'IBM Plex Mono',monospace; color: #11603F">+ {{p.amount}}</span>
+                  <button type="button" onClick="{{p.del}}" aria-label="删除这笔收款" style="padding: 5px 9px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">删除</button>
+                </div>
+              </template>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 14px">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">收款日期
+                <input type="date" value="{{payDate}}" onChange="{{onPayDate}}" style="padding: 9px 10px; border: 1px solid #D1D5DB; border-radius: 6px">
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">金额 (MYR)
+                <input type="number" min="0" step="any" value="{{payAmt}}" onChange="{{onPayAmt}}" style="padding: 9px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 150px; font-family: 'IBM Plex Mono',monospace">
+              </label>
+              <button type="button" onClick="{{addPay}}" disabled="{{busy}}" style="padding: 10px 16px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">+ 记录收款</button>
+            </div>
+          </section>
+        </template>
+      </div>
+    </template>
+
+    <!-- ============ 续约 ============ -->
+    <template data-sc="if" value="{{isRenew}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px">
+          <div>
+            <h1 style="margin: 0; font-size: 26px">续约总表</h1>
+            <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">全部 {{rtCount}} 项一目了然 · 红色 = 已过期，橙色 = 30 天内到期</p>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px">
+            <span style="padding: 6px 12px; border-radius: 999px; background: #FADADA; color: #9B1C1C; font-weight: 600">{{renewSum.over}} 已过期</span>
+            <span style="padding: 6px 12px; border-radius: 999px; background: #FCEFC7; color: #7A5200; font-weight: 600">{{renewSum.soon}} 30 天内到期</span>
+            <span style="color: #4B5563; margin-left: 6px">排序</span>
+            <template data-sc="for" list="{{rtSortBtns}}" as="b" hint-placeholder-count="2">
+              <button type="button" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
+            </template>
+          </div>
+        </div>
+
+        <section style="background: #FFFFFF; border: 1px solid #D1D5DB; border-radius: 8px; overflow: hidden">
+          <div style="overflow-x: auto">
+            <table style="font-size: 13px">
+              <thead>
+                <tr style="background: #F5C451">
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">到期日</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; min-width: 190px">剩余天数</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">顾客</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">项目 / 网站</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">收费 (Debit)</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">成本 (Credit)</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">净利</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template data-sc="for" list="{{rtRows}}" as="r" hint-placeholder-count="24">
+                  <tr style="{{r.rowStyle}}">
+                    <td style="padding: 6px 10px; font-family: 'IBM Plex Mono',monospace">{{r.due}}</td>
+                    <td style="padding: 6px 10px">
+                      <div style="display: flex; align-items: center; gap: 0">
+                        <div style="width: 48px; display: flex; justify-content: flex-end"><div style="{{r.negBar}}"></div></div>
+                        <div style="width: 1px; height: 18px; background: #6B7280"></div>
+                        <div style="width: 96px; display: flex"><div style="{{r.posBar}}"></div></div>
+                        <span style="{{r.daysStyle}}">{{r.daysTxt}}</span>
+                      </div>
+                    </td>
+                    <td style="padding: 6px 10px; font-weight: 600; white-space: normal; min-width: 150px">
+                      <template data-sc="if" value="{{r.hasLink}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{r.openCust}}" style="padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left">{{r.customer}}</button></template>
+                      <template data-sc="if" value="{{r.noLink}}" hint-placeholder-val="{{ false }}">{{r.customer}}</template>
+                    </td>
+                    <td style="padding: 6px 10px; white-space: normal; min-width: 200px">{{r.item}}</td>
+                    <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{r.fee}}</td>
+                    <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{r.cost}}</td>
+                    <td style="{{r.netStyle}}">{{r.net}}</td>
+                    <td style="padding: 4px 10px">
+                      <template data-sc="if" value="{{r.canRenew}}" hint-placeholder-val="{{ true }}">
+                        <button type="button" onClick="{{r.renew}}" style="padding: 5px 10px; background: #FFFFFF; color: #1E7A62; border: 1px solid #1E7A62; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap">已续约</button>
+                      </template>
+                      <template data-sc="if" value="{{r.isDone}}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size: 12px; color: #11603F; font-weight: 600; white-space: nowrap">✓ 已续约</span>
+                      </template>
+                    </td>
+                  </tr>
+                </template>
+                <tr style="background: #F7F8FA; border-top: 2px solid #16202A">
+                  <td colspan="4" style="padding: 8px 10px; font-weight: 700">SubTotal（顾客续约）</td>
+                  <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700">{{renewTot.fee}}</td>
+                  <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700">{{renewTot.cost}}</td>
+                  <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700">{{renewTot.net}}</td>
+                  <td style="padding: 8px 10px; font-size: 12px; color: #4B5563; white-space: nowrap">公司 {{renewTot.co}} · Bernice {{renewTot.b}} · Balon {{renewTot.ba}}</td>
+                </tr>
+                <tr style="background: #F7F8FA">
+                  <td colspan="5" style="padding: 8px 10px; font-weight: 600; color: #4B5563">− 公司自用（Webbalances、MetriCRM）</td>
+                  <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; color: #4B5563">{{rtOwnCost}}</td>
+                  <td colspan="2"></td>
+                </tr>
+                <tr style="background: #EEF8F4">
+                  <td colspan="6" style="padding: 10px; font-weight: 700">Net Profit（全年）</td>
+                  <td style="padding: 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700; color: #155A48">{{rtNet}}</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </template>
+
+  </main>
+  </div>
+  </template>
+</div>
+</template>
+<script src="supabase.js"></script>
+<script>
+window.WB_PERSIST = [];
+window.WB_CONFIG = {"url": "https://zliptskoppkldonjhzsr.supabase.co", "key": "sb_publishable_R3_zl4u6YEI575FjaJ1A9w_WQvqOxLJ"};
+</script>
+<script>
+/* Webbalance 账务系统 — 本地版小型渲染器
+ * 读取 <template id="app-tpl"> 里的界面模板（{{变量}}、data-sc="for"/"if"），
+ * 每次 setState 后重新渲染，并只更新有变化的地方（输入框不会失去焦点）。
+ * 资料存在浏览器的 localStorage（同一台电脑、同一个浏览器）。
+ */
+(function () {
+  'use strict';
+  var STORE_KEY = 'webbalance-local-v1';
+  // 要保存的资料（界面状态如当前页面不保存）
+  var PERSIST = window.WB_PERSIST || [];
+
+  function DCLogic(props) { this.props = props || {}; this.state = {}; }
+  DCLogic.prototype.setState = function (patch) {
+    var p = typeof patch === 'function' ? patch(this.state) : patch;
+    this.state = Object.assign({}, this.state, p);
+    var touched = Object.keys(p || {}).some(function (k) { return PERSIST.indexOf(k) >= 0; });
+    if (touched) save(this.state);
+    schedule();
+  };
+  DCLogic.prototype.forceUpdate = function () { schedule(); };
+  window.DCLogic = DCLogic;
+
+  function save(st) {
+    try {
+      var out = { savedAt: new Date().toISOString() };
+      PERSIST.forEach(function (k) { out[k] = st[k]; });
+      localStorage.setItem(STORE_KEY, JSON.stringify(out));
+    } catch (e) { /* 储存失败（例如隐私模式）时照常运作 */ }
+  }
+  function load() {
+    try { var t = localStorage.getItem(STORE_KEY); return t ? JSON.parse(t) : null; } catch (e) { return null; }
+  }
+  window.WB_STORE = {
+    key: STORE_KEY,
+    exportJSON: function () { return localStorage.getItem(STORE_KEY) || '{}'; },
+    reset: function () { try { localStorage.removeItem(STORE_KEY); } catch (e) {} location.reload(); }
+  };
+
+  // ---------- 模板求值 ----------
+  var HOLE = /\{\{\s*([^}]+?)\s*\}\}/g;
+  var WHOLE = /^\{\{\s*([^}]+?)\s*\}\}$/;
+  function lookup(path, scopes) {
+    path = path.trim();
+    if (path === 'true') return true;
+    if (path === 'false') return false;
+    if (path === 'null') return null;
+    if (/^-?\d+(\.\d+)?$/.test(path)) return +path;
+    var parts = path.split('.');
+    for (var i = scopes.length - 1; i >= 0; i--) {
+      var sc = scopes[i];
+      if (sc && Object.prototype.hasOwnProperty.call(sc, parts[0])) {
+        var v = sc[parts[0]];
+        for (var j = 1; j < parts.length; j++) { if (v == null) return undefined; v = v[parts[j]]; }
+        return v;
+      }
+    }
+    return undefined;
+  }
+  function interp(str, scopes) {
+    return str.replace(HOLE, function (_, p) { var v = lookup(p, scopes); return v == null ? '' : String(v); });
+  }
+
+  // 把模板节点转成「虚拟节点」
+  function build(node, scopes, out) {
+    if (node.nodeType === 3) {
+      var t = node.nodeValue;
+      if (t.indexOf('{{') >= 0) t = interp(t, scopes);
+      if (t) out.push({ text: t });
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    var tag = node.tagName.toLowerCase();
+    if (tag === 'template' && node.hasAttribute('data-sc')) {
+      var kind = node.getAttribute('data-sc');
+      if (kind === 'if') {
+        var cond = node.getAttribute('value') || '';
+        var m = cond.match(WHOLE), val = m ? lookup(m[1], scopes) : cond;
+        if (val) kids(node.content, scopes, out);
+      } else if (kind === 'for') {
+        var lm = (node.getAttribute('list') || '').match(WHOLE);
+        var list = lm ? lookup(lm[1], scopes) : null;
+        var as = node.getAttribute('as') || 'item';
+        (list || []).forEach(function (item, idx) {
+          var sc = {}; sc[as] = item; sc.$index = idx;
+          kids(node.content, scopes.concat([sc]), out);
+        });
+      }
+      return;
+    }
+    var v = { tag: tag, attrs: {}, props: {}, events: {}, children: [] };
+    for (var i = 0; i < node.attributes.length; i++) {
+      var a = node.attributes[i], name = a.name, raw = a.value;
+      if (name.indexOf('hint-') === 0) continue;
+      if (/^on[a-z]+$/i.test(name)) {
+        var mm = raw.match(WHOLE);
+        var fn = mm ? lookup(mm[1], scopes) : null;
+        if (typeof fn === 'function') {
+          var ev = name.slice(2).toLowerCase();
+          if (ev === 'change' && (tag === 'input' || tag === 'textarea') && node.getAttribute('type') !== 'checkbox') ev = 'input';
+          v.events[ev] = fn;
+        }
+        continue;
+      }
+      var whole = raw.match(WHOLE);
+      if (name === 'value' && (tag === 'input' || tag === 'select' || tag === 'textarea')) {
+        var vv = whole ? lookup(whole[1], scopes) : interp(raw, scopes);
+        v.props.value = vv == null ? '' : String(vv);
+        continue;
+      }
+      if (name === 'disabled' || name === 'checked') {
+        var b = whole ? lookup(whole[1], scopes) : true;
+        if (b) v.attrs[name] = ''; v.props[name] = !!b;
+        continue;
+      }
+      var val2 = whole ? lookup(whole[1], scopes) : (raw.indexOf('{{') >= 0 ? interp(raw, scopes) : raw);
+      if (val2 == null || val2 === false) continue;
+      v.attrs[name] = String(val2);
+    }
+    kids(tag === 'template' ? node.content : node, scopes, v.children);
+    out.push(v);
+  }
+  function kids(parent, scopes, out) {
+    for (var c = parent.firstChild; c; c = c.nextSibling) build(c, scopes, out);
+  }
+
+  // ---------- 把虚拟节点同步到画面 ----------
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  function create(v, inSvg) {
+    if (v.text != null) return document.createTextNode(v.text);
+    var svg = inSvg || v.tag === 'svg';
+    var el = svg ? document.createElementNS(SVG_NS, v.tag) : document.createElement(v.tag);
+    el.__ev = {};
+    patchEl(el, v, svg);
+    return el;
+  }
+  function patchEl(el, v, svg) {
+    var old = el.__attrs || {};
+    Object.keys(old).forEach(function (k) { if (!(k in v.attrs)) el.removeAttribute(k); });
+    Object.keys(v.attrs).forEach(function (k) { if (old[k] !== v.attrs[k]) el.setAttribute(k, v.attrs[k]); });
+    el.__attrs = v.attrs;
+    // events
+    var evs = el.__ev || (el.__ev = {});
+    Object.keys(evs).forEach(function (k) { if (!v.events[k]) { el.removeEventListener(k, evs[k].h); delete evs[k]; } });
+    Object.keys(v.events).forEach(function (k) {
+      if (!evs[k]) {
+        var rec = { fn: v.events[k] };
+        rec.h = function (e) { if (rec.fn) rec.fn(e); };
+        el.addEventListener(k, rec.h); evs[k] = rec;
+      } else evs[k].fn = v.events[k];
+    });
+    patchChildren(el, v.children, svg && v.tag !== 'foreignobject');
+    if ('disabled' in v.props) el.disabled = v.props.disabled;
+    if ('checked' in v.props) el.checked = v.props.checked;
+    if ('value' in v.props && el.value !== v.props.value) el.value = v.props.value;
+  }
+  function same(dom, v) {
+    if (v.text != null) return dom.nodeType === 3;
+    return dom.nodeType === 1 && dom.tagName.toLowerCase() === v.tag;
+  }
+  function patchChildren(el, vkids, svg) {
+    var doms = Array.prototype.slice.call(el.childNodes);
+    for (var i = 0; i < vkids.length; i++) {
+      var v = vkids[i], d = doms[i];
+      if (d && same(d, v)) {
+        if (v.text != null) { if (d.nodeValue !== v.text) d.nodeValue = v.text; }
+        else patchEl(d, v, svg || v.tag === 'svg');
+      } else {
+        var n = create(v, svg);
+        if (d) el.replaceChild(n, d); else el.appendChild(n);
+      }
+    }
+    for (var j = doms.length - 1; j >= vkids.length; j--) el.removeChild(doms[j]);
+  }
+
+  // ---------- 启动 ----------
+  var comp = null, root = null, tpl = null, pending = false;
+  function render() {
+    pending = false;
+    var vals = comp.renderVals();
+    var out = [];
+    kids(tpl.content, [vals], out);
+    patchChildren(root, out, false);
+  }
+  function schedule() { if (!pending && comp) { pending = true; (window.queueMicrotask || setTimeout)(render); } }
+
+  window.WB_BOOT = function (Component) {
+    tpl = document.getElementById('app-tpl');
+    root = document.getElementById('app');
+    comp = new Component({});
+    var saved = load();
+    if (saved) PERSIST.forEach(function (k) { if (saved[k] !== undefined && saved[k] !== null) comp.state[k] = saved[k]; });
+    render();
+    if (typeof comp.componentDidMount === 'function') comp.componentDidMount();
+  };
+})();
+
+</script>
+<script>
+(function () {
+// ===== Webbalance 账务系统 — 云端版逻辑 =====
+// 资料存在 Supabase：customers / renewals / documents(invoice, quote) / payments / expenses
+
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function parseD(s) { var p = String(s).slice(0, 10).split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function iso(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function dmy(d) { return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear(); }
+function yymmdd(d) { return String(d.getFullYear()).slice(2) + pad2(d.getMonth() + 1) + pad2(d.getDate()); }
+function addDays(isoStr, n) { var d = parseD(isoStr); d.setDate(d.getDate() + n); return iso(d); }
+function addYear(isoStr) { var d = parseD(isoStr); d.setFullYear(d.getFullYear() + 1); return iso(d); }
+function num(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+function r2(n) { return Math.round(n * 100) / 100; }
+function todayIso() { return iso(new Date()); }
+
+// 分账规则
+// 2026 起：Bernice 自接 → Bernice 先拿净利 50%；另外 50% 扣公司 10%，剩下 Bernice 45% / Balon 55%
+//          Balon 自接 / 公司 / 续约 → 公司先扣 10%，剩下 Bernice 45% / Balon 55%
+// 2025：一样，但不扣公司 10%（B0 / L0 / C0）
+// 2020–2024：年底按余额 Bernice 40% / Balon 60%（OLD，只做记录）
+// Bernice 月薪 RM 500：从当月两人分账按比例扣，不够才扣公司 10% 留存
+var SALARY = 500;
+function split(net, src) {
+  if (src === 'OLD') return { co: 0, b: 0, ba: 0 };
+  if (src === 'B0') return { co: 0, b: net * 0.5 + net * 0.5 * 0.45, ba: net * 0.5 * 0.55 };
+  if (src === 'C0' || src === 'L0') return { co: 0, b: net * 0.45, ba: net * 0.55 };
+  if (src === 'B') { var rest = net * 0.5, co = rest * 0.1, pool = rest - co; return { co: co, b: net * 0.5 + pool * 0.45, ba: pool * 0.55 }; }
+  var co2 = net * 0.1, pool2 = net - co2;
+  return { co: co2, b: pool2 * 0.45, ba: pool2 * 0.55 };
+}
+// 按单据日期决定实际规则
+function effSrc(src, dateIso) {
+  if (src === 'B0' || src === 'L0' || src === 'C0' || src === 'OLD') return src;
+  var y = +String(dateIso).slice(0, 4);
+  if (y < 2025) return 'OLD';
+  if (y === 2025) return src === 'B' ? 'B0' : (src === 'L' ? 'L0' : 'C0');
+  return src;
+}
+
+// ---------- Supabase ----------
+var SB = null;
+var DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [] };
+var TABLE = { customers: 'customers', renewals: 'renewals', docs: 'documents', payments: 'payments', expenses: 'expenses' };
+function normRow(key, r) {
+  if (!r) return r;
+  ['fee', 'cost', 'total', 'amount'].forEach(function (k) { if (r[k] != null) r[k] = Number(r[k]); });
+  if (key === 'docs' && !Array.isArray(r.lines)) r.lines = [];
+  return r;
+}
+async function fetchAll(key) {
+  var out = [], from = 0;
+  for (;;) {
+    var res = await SB.from(TABLE[key]).select('*').order('id').range(from, from + 999);
+    if (res.error) throw res.error;
+    out = out.concat(res.data.map(function (r) { return normRow(key, r); }));
+    if (res.data.length < 1000) break;
+    from += 1000;
+  }
+  return out;
+}
+async function loadAll() {
+  var keys = Object.keys(TABLE);
+  var res = await Promise.all(keys.map(fetchAll));
+  keys.forEach(function (k, i) { DB[k] = res[i]; });
+}
+async function dbInsert(key, row) {
+  var res = await SB.from(TABLE[key]).insert(row).select().single();
+  if (res.error) throw res.error;
+  var r = normRow(key, res.data); DB[key].push(r); return r;
+}
+async function dbUpdate(key, id, patch) {
+  patch = Object.assign({}, patch);
+  if (key !== 'payments' && key !== 'expenses') patch.updated_at = new Date().toISOString();
+  var res = await SB.from(TABLE[key]).update(patch).eq('id', id).select().single();
+  if (res.error) throw res.error;
+  var r = normRow(key, res.data);
+  DB[key] = DB[key].map(function (x) { return x.id === id ? r : x; });
+  return r;
+}
+async function dbDelete(key, id) {
+  var res = await SB.from(TABLE[key]).delete().eq('id', id);
+  if (res.error) throw res.error;
+  DB[key] = DB[key].filter(function (x) { return x.id !== id; });
+}
+function errText(e) {
+  var m = (e && (e.message || e.error_description || e.msg)) || String(e);
+  if (/duplicate key.*doc_no/i.test(m)) return '这个单号已经用过了，请换一个';
+  if (/Invalid login credentials/i.test(m)) return '邮箱或密码不对';
+  if (/Email not confirmed/i.test(m)) return '邮箱还没确认：请先到邮箱点确认链接';
+  if (/User already registered/i.test(m)) return '这个邮箱已经设定过密码，请直接登入';
+  if (/Password should be at least/i.test(m)) return '密码至少要 6 个字';
+  if (/Failed to fetch|NetworkError/i.test(m)) return '连不上服务器，请检查网络';
+  if (/row-level security/i.test(m)) return '这个账号没有权限';
+  return m;
+}
+function newEditor(kind, custId) {
+  var t = todayIso();
+  return { kind: kind, id: null, no: '', noTouched: false, date: t, custId: custId != null ? String(custId) : '',
+    lines: [{ desc: '', qty: '1', price: '' }], source: 'C', cost: '', status: '草稿', valid: addDays(t, 30),
+    fromQuote: null, renewalId: null, err: '' };
+}
+function editorFromDoc(d) {
+  return { kind: d.kind, id: d.id, no: d.doc_no, noTouched: true, date: d.doc_date, custId: d.customer_id != null ? String(d.customer_id) : '',
+    lines: (d.lines.length ? d.lines : [{ desc: d.title || '', qty: 1, price: d.total }]).map(function (l) { return { desc: l.desc || '', qty: String(l.qty != null ? l.qty : 1), price: String(l.price != null ? l.price : '') }; }),
+    source: ['B', 'L', 'C', 'R'].indexOf(d.source) >= 0 ? d.source : (d.source === 'OLD' ? 'C' : d.source.charAt(0)),
+    rawSource: d.source, cost: d.cost ? String(d.cost) : '', status: d.status || '草稿',
+    valid: d.valid_until || addDays(d.doc_date, 30), fromQuote: d.from_quote_id, renewalId: d.renewal_id, err: '' };
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      gate: 'loading', lg: { mode: 'login', email: '', pw: '', pw2: '', err: '', msg: '' }, userEmail: '', loadedAt: null,
+      busy: false, tab: 'dash', dlMsg: '',
+      src: 'B', sale: '100', cost: '0',
+      q: '', showNewCust: false, nc: {}, ncRen: [{ item: '', fee: '', cost: '', due: '' }], ncErr: '', ncMsg: '',
+      editId: null, draft: {}, draftRen: [], editErr: '', confirmDel: null,
+      custDetail: null, backTab: null, divWho: 'all',
+      ef: {}, expErr: '', expDel: null,
+      edInv: newEditor('invoice'), edQuo: newEditor('quote'), payDate: todayIso(), payAmt: ''
+    };
+  }
+
+  // ---------- 登入 / 载入 ----------
+  componentDidMount() {
+    var self = this;
+    if (!window.supabase || !window.WB_CONFIG) { this.setState({ gate: 'error', fatal: '设定档缺少 Supabase 资料' }); return; }
+    SB = window.supabase.createClient(WB_CONFIG.url, WB_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    SB.auth.onAuthStateChange(function (event, session) {
+      if (event === 'PASSWORD_RECOVERY') { self.setState({ gate: 'recovery', lg: Object.assign({}, self.state.lg, { err: '', msg: '' }) }); return; }
+      if (event === 'SIGNED_OUT') { DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [] }; self.setState({ gate: 'out', userEmail: '' }); return; }
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session && self.state.gate !== 'recovery' && self.state.gate !== 'in' && self.state.gate !== 'loadingData') {
+        setTimeout(function () { self.afterLogin(session); }, 0);
+      }
+      if (event === 'INITIAL_SESSION' && !session && self.state.gate === 'loading') self.setState({ gate: 'out' });
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && self.state.gate === 'in' && self._loadedMs && Date.now() - self._loadedMs > 120000) self.reload(true);
+    });
+  }
+  async afterLogin(session) {
+    this.setState({ gate: 'loadingData', userEmail: session.user.email });
+    try {
+      var ok = await SB.rpc('is_wb_user');
+      if (ok.error) throw ok.error;
+      if (!ok.data) { this.setState({ gate: 'denied' }); return; }
+      await loadAll();
+      this._loadedMs = Date.now();
+      this.setState({ gate: 'in', loadedAt: new Date().toLocaleString('zh-CN') });
+    } catch (e) { this.setState({ gate: 'error', fatal: errText(e) }); }
+  }
+  async reload(silent) {
+    try {
+      if (!silent) this.setState({ busy: true });
+      await loadAll();
+      this._loadedMs = Date.now();
+      this.setState({ busy: false, loadedAt: new Date().toLocaleString('zh-CN') });
+      if (!silent) this.toast('资料已更新');
+    } catch (e) { this.setState({ busy: false }); this.toast('载入失败：' + errText(e), 8000); }
+  }
+  toast(msg, ms) {
+    var self = this;
+    clearTimeout(this._tt);
+    this.setState({ dlMsg: msg });
+    this._tt = setTimeout(function () { self.setState({ dlMsg: '' }); }, ms || 3500);
+  }
+  async act(fn, okMsg) {
+    if (this.state.busy) return null;
+    this.setState({ busy: true });
+    try {
+      var r = await fn();
+      this.setState({ busy: false });
+      if (okMsg) this.toast(typeof okMsg === 'function' ? okMsg(r) : okMsg);
+      return r;
+    } catch (e) {
+      this.setState({ busy: false });
+      this.toast('出错了：' + errText(e), 9000);
+      return null;
+    }
+  }
+  async gateSubmit() {
+    var s = this.state, lg = s.lg, self = this;
+    var setLg = function (p) { self.setState({ lg: Object.assign({}, self.state.lg, p) }); };
+    var email = (lg.email || '').trim();
+    setLg({ err: '', msg: '' });
+    this.setState({ busy: true });
+    try {
+      if (s.gate === 'recovery') {
+        if ((lg.pw || '').length < 6) throw new Error('密码至少要 6 个字');
+        if (lg.pw !== lg.pw2) throw new Error('两次输入的密码不一样');
+        var u = await SB.auth.updateUser({ password: lg.pw });
+        if (u.error) throw u.error;
+        setLg({ pw: '', pw2: '' });
+        var ss = await SB.auth.getSession();
+        this.setState({ busy: false, gate: 'loading' });
+        if (ss.data.session) this.afterLogin(ss.data.session); else this.setState({ gate: 'out' });
+        return;
+      }
+      if (!email) throw new Error('请填 Email');
+      if (lg.mode === 'login') {
+        var r = await SB.auth.signInWithPassword({ email: email, password: lg.pw || '' });
+        if (r.error) throw r.error;
+        setLg({ pw: '' });
+      } else if (lg.mode === 'signup') {
+        if ((lg.pw || '').length < 6) throw new Error('密码至少要 6 个字');
+        if (lg.pw !== lg.pw2) throw new Error('两次输入的密码不一样');
+        var su = await SB.auth.signUp({ email: email, password: lg.pw, options: { emailRedirectTo: location.origin + location.pathname } });
+        if (su.error) throw su.error;
+        if (su.data.session) { setLg({ pw: '', pw2: '' }); }
+        else setLg({ mode: 'login', pw: '', pw2: '', msg: '已寄出确认邮件到 ' + email + '。请到邮箱点确认链接，然后回来用这个密码登入。' });
+      } else if (lg.mode === 'reset') {
+        var rs = await SB.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+        if (rs.error) throw rs.error;
+        setLg({ msg: '已寄出重设密码的邮件到 ' + email + '。请点邮件里的链接，回到这里设定新密码。' });
+      }
+      this.setState({ busy: false });
+    } catch (e) {
+      this.setState({ busy: false });
+      setLg({ err: errText(e) });
+    }
+  }
+
+  // ---------- 单号 ----------
+  nextNo(kind, dateIso, exceptId) {
+    var prefix = (kind === 'quote' ? 'WB_QT_' : 'WB_IV_') + yymmdd(parseD(dateIso)) + '_';
+    var max = 0;
+    DB.docs.forEach(function (d) {
+      if (d.id !== exceptId && d.doc_no.indexOf(prefix) === 0) { var n = parseInt(d.doc_no.slice(prefix.length), 10); if (n > max) max = n; }
+    });
+    return prefix + pad2(max + 1);
+  }
+  edKey(kind) { return kind === 'quote' ? 'edQuo' : 'edInv'; }
+  setEd(kind, patch) {
+    var k = this.edKey(kind), p = {};
+    p[k] = Object.assign({}, this.state[k], patch);
+    this.setState(p);
+  }
+  openDoc(d) {
+    var p = { tab: d.kind === 'quote' ? 'quo' : 'inv', custDetail: null };
+    p[this.edKey(d.kind)] = editorFromDoc(d);
+    if (d.kind === 'invoice') { p.payDate = todayIso(); p.payAmt = ''; }
+    this.setState(p);
+  }
+  docPdf(d) {
+    var c = DB.customers.filter(function (x) { return x.id === d.customer_id; })[0] || { name: '[未关联顾客]', addr: '', phone: '' };
+    var fmt = function (n) { return r2(n).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var lines = (d.lines.length ? d.lines : [{ desc: d.title, qty: 1, price: d.total }]).map(function (l) {
+      var q = num(l.qty), p = num(l.price);
+      return { desc: l.desc, qty: String(q), unit: fmt(p), amt: fmt(q * p) };
+    });
+    return { kind: d.kind === 'quote' ? 'QUOTATION' : 'INVOICE', no: d.doc_no, date: dmy(parseD(d.doc_date)),
+      valid: d.kind === 'quote' ? dmy(parseD(d.valid_until || addDays(d.doc_date, 30))) : null,
+      name: c.name, addr: c.addr, phone: c.phone, lines: lines, total: fmt(d.total) };
+  }
+  edToRow(ed) {
+    var lines = ed.lines.filter(function (l) { return (l.desc || '').trim() || num(l.price); })
+      .map(function (l) { return { desc: (l.desc || '').trim(), qty: num(l.qty), price: num(l.price) }; });
+    var total = r2(lines.reduce(function (a, l) { return a + l.qty * l.price; }, 0));
+    var no = (ed.no || '').trim() || this.nextNo(ed.kind, ed.date, ed.id);
+    var row = { kind: ed.kind, doc_no: no, doc_date: ed.date, customer_id: ed.custId ? +ed.custId : null,
+      title: lines.length ? lines[0].desc : '', lines: lines, total: total };
+    if (ed.kind === 'invoice') { row.source = ed.source; row.cost = r2(num(ed.cost)); row.renewal_id = ed.renewalId || null; row.from_quote_id = ed.fromQuote || null; }
+    else { row.status = ed.status || '草稿'; row.valid_until = ed.valid || null; }
+    return row;
+  }
+  async saveEd(kind) {
+    var self = this, ed = this.state[this.edKey(kind)];
+    if (!ed.custId) { this.setEd(kind, { err: '请选择顾客' }); return null; }
+    if (!ed.date) { this.setEd(kind, { err: '请填日期' }); return null; }
+    var row = this.edToRow(ed);
+    if (!row.lines.length) { this.setEd(kind, { err: '至少要有一行项目' }); return null; }
+    if (row.lines.some(function (l) { return !l.desc; })) { this.setEd(kind, { err: '每一行都要写项目描述' }); return null; }
+    this.setEd(kind, { err: '' });
+    var saved = await this.act(async function () {
+      return ed.id ? await dbUpdate('docs', ed.id, row) : await dbInsert('docs', row);
+    }, function (r) { return '已保存 ' + r.doc_no; });
+    if (saved) { var cur = self.state[self.edKey(kind)]; self.setEd(kind, { id: saved.id, no: saved.doc_no, noTouched: true, rawSource: saved.source, err: '' }); }
+    return saved;
+  }
+  async convertQuote(q) {
+    var self = this;
+    if (!confirm('把 ' + q.doc_no + ' 转成 Invoice？')) return;
+    var inv = await this.act(async function () {
+      var row = { kind: 'invoice', doc_no: self.nextNo('invoice', todayIso()), doc_date: todayIso(), customer_id: q.customer_id,
+        title: q.title, lines: q.lines, total: q.total, source: 'C', cost: 0, from_quote_id: q.id };
+      var r = await dbInsert('docs', row);
+      await dbUpdate('docs', q.id, { status: '已转 Invoice' });
+      return r;
+    }, function (r) { return '已开 ' + r.doc_no + '：请选项目来源、填成本后按保存'; });
+    if (inv) this.openDoc(inv);
+  }
+  async deleteDoc(d) {
+    var self = this;
+    var label = d.kind === 'quote' ? 'Quotation' : 'Invoice';
+    if (!confirm('确定删除 ' + label + ' ' + d.doc_no + '？' + (d.kind === 'invoice' ? '这张单的收款记录也会一起删除。' : '') + '删除后不能复原。')) return;
+    var ok = await this.act(async function () {
+      if (d.kind === 'quote') {
+        var linked = DB.docs.filter(function (x) { return x.from_quote_id === d.id; });
+        for (var i = 0; i < linked.length; i++) await dbUpdate('docs', linked[i].id, { from_quote_id: null });
+      }
+      await dbDelete('docs', d.id);
+      DB.payments = DB.payments.filter(function (p) { return p.document_id !== d.id; });
+      return true;
+    }, '已删除 ' + d.doc_no);
+    if (ok) { var p = {}; p[self.edKey(d.kind)] = newEditor(d.kind); self.setState(p); }
+  }
+  async renewItem(r, isOwn) {
+    var due = r.due_date, next = addYear(due), self = this;
+    if (isOwn) {
+      if (!confirm('「' + r.item + '」已续约？到期日会改成 ' + dmy(parseD(next)) + (r.cost ? '，并在其他开销记一笔 RM ' + r.cost : '') + '。')) return;
+      await this.act(async function () {
+        if (r.cost) await dbInsert('expenses', { exp_date: todayIso(), description: r.item + ' 续约', category: 'Hosting / 域名 / 主题', amount: r.cost, customer_id: null });
+        await dbUpdate('renewals', r.id, { due_date: next });
+      }, '已更新到期日');
+      return;
+    }
+    if (!confirm('「' + r.item + '」已续约？\n会自动开一张 Invoice（RM ' + r.fee + '），到期日改成 ' + dmy(parseD(next)) + '。')) return;
+    var inv = await this.act(async function () {
+      var t = todayIso();
+      var desc = r.item + ' yearly renewal (' + dmy(parseD(due)) + ' – ' + dmy(parseD(addDays(next, -1))) + ')';
+      var row = { kind: 'invoice', doc_no: self.nextNo('invoice', t), doc_date: t, customer_id: r.customer_id, title: desc,
+        lines: [{ desc: desc, qty: 1, price: r.fee }], total: r.fee, cost: r.cost || 0, source: 'R', renewal_id: r.id };
+      var created = await dbInsert('docs', row);
+      await dbUpdate('renewals', r.id, { due_date: next });
+      return created;
+    }, function (x) { return '已开 ' + x.doc_no + '，到期日已推到下一年'; });
+    if (inv) this.setState({ lastRenewInv: inv.id });
+  }
+  exportAll() {
+    var data = JSON.stringify({ exportedAt: new Date().toISOString(), customers: DB.customers, renewals: DB.renewals, documents: DB.docs, payments: DB.payments, expenses: DB.expenses }, null, 1);
+    var d = new Date(), stamp = d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate());
+    var url = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+    var a = document.createElement('a'); a.href = url; a.download = 'webbalance-backup-' + stamp + '.json';
+    a.dispatchEvent(new MouseEvent('click')); setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+  }
+
+  async saveFile(fname, bytes, mime) {
+    var api = (typeof window !== 'undefined' && window.claude && typeof window.claude.use === 'function') ? window.claude : null;
+    var dl = null;
+    try { dl = api ? await api.use('downloads') : null; } catch (e) { dl = null; }
+    var fallback = function () {
+      var url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+      var a = document.createElement('a'); a.href = url; a.download = fname; a.rel = 'noopener';
+      a.dispatchEvent(new MouseEvent('click', { bubbles: false, cancelable: true, view: window }));
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      return 'fallback';
+    };
+    if (!dl) return fallback();
+    try { await dl.save({ filename: fname, data: new Blob([bytes], { type: mime }) }); return 'saved'; }
+    catch (err) {
+      var code = err && err.code;
+      if (code === 'declined' || code === 'rate_limited') return code;
+      return fallback();
+    }
+  }
+  makeZip(files) {
+    // files: [{name, data: Uint8Array}]，不压缩（store），文件名 UTF-8
+    var T = this._crcT || (this._crcT = (function () { var t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })());
+    var crc = function (d) { var c = 0xFFFFFFFF; for (var i = 0; i < d.length; i++) c = T[(c ^ d[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+    var enc = new TextEncoder(), parts = [], central = [], off = 0;
+    var now = new Date(), dt = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF,
+      dd = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+    var u16 = function (v, a, i) { a[i] = v & 0xFF; a[i + 1] = (v >>> 8) & 0xFF; };
+    var u32 = function (v, a, i) { a[i] = v & 0xFF; a[i + 1] = (v >>> 8) & 0xFF; a[i + 2] = (v >>> 16) & 0xFF; a[i + 3] = (v >>> 24) & 0xFF; };
+    files.forEach(function (f) {
+      var nm = enc.encode(f.name), d = f.data, isDir = /\/$/.test(f.name), c = isDir ? 0 : crc(d), sz = isDir ? 0 : d.length;
+      var h = new Uint8Array(30 + nm.length);
+      u32(0x04034b50, h, 0); u16(20, h, 4); u16(0x0800, h, 6); u16(0, h, 8); u16(dt, h, 10); u16(dd, h, 12);
+      u32(c, h, 14); u32(sz, h, 18); u32(sz, h, 22); u16(nm.length, h, 26); u16(0, h, 28); h.set(nm, 30);
+      var ch = new Uint8Array(46 + nm.length);
+      u32(0x02014b50, ch, 0); u16(20, ch, 4); u16(20, ch, 6); u16(0x0800, ch, 8); u16(0, ch, 10); u16(dt, ch, 12); u16(dd, ch, 14);
+      u32(c, ch, 16); u32(sz, ch, 20); u32(sz, ch, 24); u16(nm.length, ch, 28); u16(0, ch, 30); u16(0, ch, 32); u16(0, ch, 34); u16(0, ch, 36);
+      u32(isDir ? 0x10 : 0, ch, 38); u32(off, ch, 42); ch.set(nm, 46);
+      parts.push(h); if (!isDir) parts.push(d); central.push(ch);
+      off += h.length + sz;
+    });
+    var cdSize = central.reduce(function (a, c) { return a + c.length; }, 0);
+    var end = new Uint8Array(22);
+    u32(0x06054b50, end, 0); u16(files.length, end, 8); u16(files.length, end, 10); u32(cdSize, end, 12); u32(off, end, 16);
+    var all = parts.concat(central, [end]), total = all.reduce(function (a, p) { return a + p.length; }, 0), out = new Uint8Array(total), p = 0;
+    all.forEach(function (b) { out.set(b, p); p += b.length; });
+    return out;
+  }
+  async downloadYear(year, list) {
+    var self = this;
+    var done = function (msg, ms) { self.setState({ dlMsg: msg, zipBusy: false }); setTimeout(function () { self.setState({ dlMsg: '' }); }, ms || 5000); };
+    if (!list.length) return done(year + ' 年没有开过 Invoice');
+    self.setState({ zipBusy: true });
+    try {
+      var files = [], months = {}, safe = function (t) { return String(t).replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim(); };
+      var csv = ['﻿月份,日期,Invoice #,顾客,金额 (MYR)'];
+      for (var i = 0; i < list.length; i++) {
+        var inv = list[i], folder = 'Webbalance_Invoice_' + year + '/' + inv.month + '/';
+        if (!months[folder]) { months[folder] = true; files.push({ name: folder, data: new Uint8Array(0) }); }
+        self.setState({ dlMsg: '正在生成 ' + (i + 1) + ' / ' + list.length + '：' + inv.no });
+        var pdf = await self.buildPdf(inv.doc);
+        files.push({ name: folder + safe(inv.no + '_' + inv.doc.name) + '.pdf', data: pdf });
+        csv.push([inv.month, inv.doc.date, inv.no, '"' + inv.doc.name.replace(/"/g, '""') + '"', inv.amount.toFixed(2)].join(','));
+      }
+      csv.push(',,,合计,' + list.reduce(function (a, x) { return a + x.amount; }, 0).toFixed(2));
+      files.unshift({ name: 'Webbalance_Invoice_' + year + '/', data: new Uint8Array(0) });
+      files.push({ name: 'Webbalance_Invoice_' + year + '/' + year + '_Invoice清单.csv', data: new TextEncoder().encode(csv.join('\r\n')) });
+      self.setState({ dlMsg: '正在打包 ZIP …' });
+      var zip = self.makeZip(files);
+      var r = await self.saveFile('Webbalance_Invoice_' + year + '.zip', zip, 'application/zip');
+      if (r === 'declined') return done('已取消下载');
+      if (r === 'rate_limited') return done('上一个下载还没确认，请稍等再试');
+      done('已下载 Webbalance_Invoice_' + year + '.zip（' + list.length + ' 张 Invoice）', 6000);
+    } catch (err) {
+      done('打包失败：' + ((err && (err.code || err.message)) || '未知错误'), 9000);
+    }
+  }
+  async downloadDoc(doc) {
+    var self = this;
+    var fname = doc.no + '.pdf', stage = '生成 PDF', bytes;
+    self.setState({ dlMsg: '正在生成 ' + fname + ' …' });
+    var done = function (msg, ms) { self.setState({ dlMsg: msg }); setTimeout(function () { self.setState({ dlMsg: '' }); }, ms || 4000); };
+    // 备用方法：浏览器直接下载
+    var fallback = function () {
+      var url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+      var a = document.createElement('a'); a.href = url; a.download = fname; a.rel = 'noopener';
+      a.dispatchEvent(new MouseEvent('click', { bubbles: false, cancelable: true, view: window }));
+      setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    };
+    try {
+      bytes = await self.buildPdf(doc);
+      stage = '连接下载功能';
+      var api = (typeof window !== 'undefined' && window.claude && typeof window.claude.use === 'function') ? window.claude : null;
+      var dl = api ? await api.use('downloads') : null;
+      if (!dl) { stage = '下载'; fallback(); done('已下载 ' + fname); return; }
+      stage = '保存文件';
+      try {
+        await dl.save({ filename: fname, data: new Blob([bytes], { type: 'application/pdf' }) });
+        done('已下载 ' + fname);
+      } catch (err) {
+        var code = err && err.code;
+        if (code === 'declined') return done('已取消下载');
+        if (code === 'rate_limited') return done('上一个下载还没确认，请稍等再试');
+        stage = '备用下载（' + (code || 'error') + '）';
+        fallback();
+        done('已开始下载 ' + fname + '（备用方法，原因：' + (code || (err && err.message) || '未知') + '）', 7000);
+      }
+    } catch (err2) {
+      done('下载失败 · 步骤：' + stage + ' · ' + ((err2 && (err2.code || err2.message)) || '未知错误'), 9000);
+    }
+  }
+  async buildPdf(doc) {
+    var W = 1190, H = 1684, TEAL = '#1E7A62', INK = '#16202A', GREY = '#4B5563';
+    var logo = null;
+    try { logo = new Image(); logo.src = 'logo.png'; await logo.decode(); } catch (e) { logo = null; }
+    var F = "'IBM Plex Sans','Noto Sans SC',sans-serif", M = "'IBM Plex Mono',monospace";
+    var draw = function (withLogo) {
+      var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      var g = cv.getContext('2d');
+      g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, W, H);
+      var txt = function (t, x, y, font, color, align) { g.font = font; g.fillStyle = color || INK; g.textAlign = align || 'left'; g.fillText(t, x, y); };
+      var wrap = function (t, maxW, font) {
+        g.font = font; var out = [], line = '';
+        String(t).split('').forEach(function (ch) { if (g.measureText(line + ch).width > maxW && line) { out.push(line); line = ch; } else line += ch; });
+        if (line) out.push(line); return out;
+      };
+      if (withLogo && logo) g.drawImage(logo, 80, 70, 120, 120);
+      var lx = withLogo && logo ? 225 : 80;
+      txt('WEBBALANCE SOLUTIONS', lx, 112, '700 30px ' + F);
+      txt('(CA0366370-K)', lx, 142, '400 19px ' + F, GREY);
+      ['UNIT 6, LEVEL 4, SETIAWALK MALL (BLOCK K),', 'PERSIARAN WAWASAN, PUSAT BANDAR PUCHONG', '47160 PUCHONG SELANGOR', 'EMAIL: bernice@webbalances.com', 'PHONE: 6010 831 2238']
+        .forEach(function (l, i) { txt(l, lx, 178 + i * 27, '400 18px ' + F, '#374151'); });
+      txt(doc.kind, W - 80, 120, '700 52px ' + F, TEAL, 'right');
+      var meta = [['DATE', doc.date], [doc.kind + ' #', doc.no]];
+      if (doc.valid) meta.push(['VALID UNTIL', doc.valid]);
+      meta.forEach(function (m, i) { txt(m[0], W - 330, 175 + i * 32, '600 18px ' + F, GREY); txt(m[1], W - 80, 175 + i * 32, '500 18px ' + M, INK, 'right'); });
+      var y = 380;
+      txt(doc.kind === 'QUOTATION' ? 'QUOTE TO :' : 'BILL TO :', 80, y, '700 18px ' + F, GREY);
+      txt(doc.name, 80, y + 36, '700 24px ' + F);
+      var ay = y + 68;
+      wrap(doc.addr || '', 620, '400 19px ' + F).forEach(function (l) { txt(l, 80, ay, '400 19px ' + F, '#374151'); ay += 28; });
+      if (doc.phone) { txt(doc.phone, 80, ay, '400 19px ' + F, '#374151'); ay += 28; }
+      y = Math.max(ay + 50, 580);
+      g.fillStyle = '#EEF8F4'; g.fillRect(80, y - 34, W - 160, 50);
+      txt('DESCRIPTION', 96, y, '700 17px ' + F, '#155A48');
+      txt('QTY', 760, y, '700 17px ' + F, '#155A48', 'right');
+      txt('PRICE', 920, y, '700 17px ' + F, '#155A48', 'right');
+      txt('TOTAL AMOUNT(MYR)', W - 96, y, '700 17px ' + F, '#155A48', 'right');
+      y += 54;
+      doc.lines.forEach(function (l) {
+        var dl = wrap(l.desc, 560, '400 19px ' + F);
+        dl.forEach(function (s, k) { txt(s, 96, y + k * 28, '400 19px ' + F); });
+        txt(l.qty, 760, y, '400 19px ' + M, INK, 'right');
+        txt(l.unit, 920, y, '400 19px ' + M, INK, 'right');
+        txt(l.amt, W - 96, y, '400 19px ' + M, INK, 'right');
+        y += Math.max(1, dl.length) * 28 + 22;
+        g.fillStyle = '#E5E7EB'; g.fillRect(80, y - 30, W - 160, 1);
+      });
+      y += 30;
+      g.fillStyle = INK; g.fillRect(W - 520, y - 34, 440, 3);
+      txt('TOTAL(MYR)', W - 520, y + 6, '700 24px ' + F);
+      txt(doc.total, W - 96, y + 6, '700 24px ' + M, INK, 'right');
+      if (doc.kind === 'QUOTATION') {
+        y += 90;
+        ['Terms:', '1. 50% deposit upon confirmation, balance upon completion.', '2. This quotation is valid for 30 days.']
+          .forEach(function (l, i) { txt(l, 80, y + i * 28, (i ? '400' : '700') + ' 17px ' + F, '#374151'); });
+      }
+      txt('This ' + (doc.kind === 'QUOTATION' ? 'Quotation' : 'Invoice') + ' is generated by computer. No signature needed', W / 2, H - 80, '400 16px ' + F, GREY, 'center');
+      return cv.toDataURL('image/jpeg', 0.92);
+    };
+    var url;
+    try { url = draw(true); } catch (e) { url = draw(false); }
+    var bin = atob(url.split(',')[1]), jpg = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) jpg[i] = bin.charCodeAt(i);
+    var enc = new TextEncoder(), parts = [], len = 0, offs = [];
+    var push = function (x) { var b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); len += b.length; };
+    push('%PDF-1.4\n');
+    var obj = function (n, body) { offs[n] = len; push(n + ' 0 obj\n' + body + '\nendobj\n'); };
+    obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    obj(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
+    offs[4] = len;
+    push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + W + ' /Height ' + H + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n');
+    push(jpg); push('\nendstream\nendobj\n');
+    var cs = 'q 595 0 0 842 0 0 cm /Im0 Do Q';
+    obj(5, '<< /Length ' + cs.length + ' >>\nstream\n' + cs + '\nendstream');
+    var xref = len, x = 'xref\n0 6\n0000000000 65535 f \n';
+    for (var n = 1; n <= 5; n++) x += String(offs[n]).padStart(10, '0') + ' 00000 n \n';
+    push(x + 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n');
+    var out = new Uint8Array(len), p = 0;
+    parts.forEach(function (b) { out.set(b, p); p += b.length; });
+    return out;
+  }
+
+  renderVals() {
+    var s = this.state, self = this;
+    var fmt = function (n) { return r2(n).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var rm = function (n) { return 'RM ' + fmt(n); };
+    var badge = function (bg, fg) { return 'display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:' + bg + ';color:' + fg; };
+    var SRC = { B: ['Bernice 自接', badge('#FBE7DA', '#8A3B0E')], L: ['Balon 自接', badge('#DCE6F7', '#1D4485')], C: ['公司', badge('#ECEEF1', '#374151')], R: ['续约', badge('#DDF2EA', '#155A48')],
+      B0: ['Bernice 自接', badge('#FBE7DA', '#8A3B0E')], C0: ['公司', badge('#ECEEF1', '#374151')], OLD: ['年底 40/60', badge('#EEF0F2', '#4B5563')], L0: ['Balon 自接', badge('#DCE6F7', '#1D4485')] };
+    var OK = badge('#D9F0E6', '#11603F'), WARN = badge('#FCEFC7', '#7A5200'), BAD = badge('#FADADA', '#9B1C1C'), MUTED = badge('#ECEEF1', '#374151');
+    var chip = function (on) { return 'padding:7px 12px;border-radius:999px;font:inherit;font-size:13px;cursor:pointer;' + (on ? 'background:#1E7A62;color:#FFFFFF;border:1px solid #1E7A62;font-weight:600' : 'background:#FFFFFF;color:#374151;border:1px solid #D1D5DB'); };
+
+    // ---------- 登入画面 ----------
+    var lg = s.lg, setLg = function (k) { return function (e) { var p = {}; p[k] = e.target.value; self.setState({ lg: Object.assign({}, self.state.lg, p) }); }; };
+    var modeTo = function (m) { return function () { self.setState({ lg: Object.assign({}, self.state.lg, { mode: m, err: '', msg: '', pw: '', pw2: '' }) }); }; };
+    var g = s.gate, isForm = g === 'out' || g === 'recovery';
+    var gate = {
+      loading: !isForm, form: isForm,
+      loadingText: g === 'denied' ? '这个账号（' + s.userEmail + '）没有权限使用这个系统。' : (g === 'error' ? '出错了：' + (s.fatal || '') : (g === 'loadingData' ? '正在载入资料…' : '正在连线…')),
+      title: g === 'recovery' ? '设定新密码' : ({ login: '登入', signup: '第一次使用：设定密码', reset: '忘记密码' })[lg.mode],
+      askEmail: g !== 'recovery', askPw: g === 'recovery' || lg.mode !== 'reset', askPw2: g === 'recovery' || lg.mode === 'signup',
+      pwLabel: g === 'recovery' || lg.mode === 'signup' ? '设定密码（至少 6 个字）' : '密码', pwAuto: lg.mode === 'login' && g !== 'recovery' ? 'current-password' : 'new-password',
+      email: lg.email, pw: lg.pw, pw2: lg.pw2, onEmail: setLg('email'), onPw: setLg('pw'), onPw2: setLg('pw2'),
+      err: lg.err, hasErr: !!lg.err, msg: lg.msg, hasMsg: !!lg.msg,
+      submitLabel: s.busy ? '请稍等…' : (g === 'recovery' ? '保存新密码' : ({ login: '登入', signup: '设定密码', reset: '寄出重设邮件' })[lg.mode]),
+      submit: function () { self.gateSubmit(); },
+      links: g === 'recovery' ? [] : (lg.mode === 'login' ? [{ label: '第一次使用？设定密码', go: modeTo('signup') }, { label: '忘记密码', go: modeTo('reset') }] : [{ label: '← 回到登入', go: modeTo('login') }])
+    };
+    if (g === 'denied' || g === 'error') gate.loadingText += '';
+    var base = { showGate: g !== 'in', ready: g === 'in', gate: gate, busy: !!s.busy, dlMsg: s.dlMsg || '', hasDlMsg: !!s.dlMsg };
+    if (g !== 'in') {
+      if (g === 'denied' || g === 'error') { base.gate.form = false; base.gate.loading = true; }
+      return base;
+    }
+
+    // ---------- 日期 ----------
+    var now = new Date(), Y = now.getFullYear(), M = now.getMonth() + 1, TODAY = todayIso();
+    var monthStart = Y + '-' + pad2(M) + '-01', monthEnd = iso(new Date(Y, M, 0));
+    var lastStart = iso(new Date(Y, M - 2, 1)), lastEnd = iso(new Date(Y, M - 1, 0));
+    var monthLabel = Y + '年' + M + '月';
+    var years = {}; years[Y] = true;
+    DB.docs.forEach(function (d) { years[d.doc_date.slice(0, 4)] = true; });
+    DB.expenses.forEach(function (x) { years[x.exp_date.slice(0, 4)] = true; });
+    var yearList = Object.keys(years).map(Number).sort(function (a, b) { return b - a; });
+    var minY = yearList[yearList.length - 1];
+    var yearPresets = function (withMonth) {
+      var list = withMonth ? [['本月', monthStart, monthEnd], ['上个月', lastStart, lastEnd]] : [];
+      yearList.forEach(function (y) { list.push([String(y), y + '-01-01', y + '-12-31']); });
+      list.push(['全部', minY + '-01-01', Y + '-12-31']);
+      return list;
+    };
+
+    // ---------- 顾客 ----------
+    var custById = {}; DB.customers.forEach(function (c) { custById[c.id] = c; });
+    var activeCust = DB.customers.filter(function (c) { return !c.is_deleted; });
+    var cname = function (id) { var c = custById[id]; return c ? c.name : (id == null ? '[未关联顾客]' : '[已删除顾客]'); };
+    var custOpts = activeCust.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).map(function (c) { return { v: String(c.id), name: c.name }; });
+    var renByCust = {};
+    DB.renewals.forEach(function (r) { if (r.is_active && !r.is_own && r.customer_id != null) (renByCust[r.customer_id] = renByCust[r.customer_id] || []).push(r); });
+
+    var tabDefs = [['dash', '总览'], ['txn', '全部交易'], ['cust', '顾客'], ['proj', '项目 & 分账'], ['div', '分红'], ['exp', '其他开销'], ['quo', 'Quotation'], ['quoList', '已开 Quotation', 1], ['inv', 'Invoice'], ['invDl', '下载 Invoice', 1], ['renew', '续约']];
+    var tabs = tabDefs.map(function (t) {
+      var on = s.tab === t[0];
+      return { label: t[1], go: function () { self.setState({ tab: t[0], custDetail: null, backTab: null }); },
+        current: on ? 'page' : 'false',
+        dot: 'display:inline-block;width:6px;height:6px;border-radius:3px;margin-right:10px;vertical-align:2px;background:' + (on ? '#1E7A62' : 'transparent'),
+        style: 'display:block;width:100%;text-align:left;border:0;border-radius:6px;font:inherit;cursor:pointer;' + (t[2] ? 'padding:8px 12px 8px 30px;font-size:13px;' : 'padding:11px 12px;font-size:14px;') + (on ? 'background:#DDF2EA;color:#155A48;font-weight:600' : 'background:transparent;color:#374151') };
+    });
+
+    // ---------- 分账计算器 ----------
+    var sale = num(s.sale), cost = num(s.cost), net = sale - cost, sp = split(net, s.src === 'R' ? 'C' : s.src);
+    var formula = s.src === 'B'
+      ? '① Bernice 先拿 50% = ' + fmt(net * 0.5) + '\n② 另外 ' + fmt(net * 0.5) + ' 扣公司 10% = ' + fmt(net * 0.05) + '\n③ 剩下 ' + fmt(net * 0.45) + '：Bernice 45% = ' + fmt(net * 0.2025) + '，Balon 55% = ' + fmt(net * 0.2475)
+      : '① 公司先留 10% = ' + fmt(net * 0.1) + '\n② 剩下 ' + fmt(net * 0.9) + '：Bernice 45% = ' + fmt(net * 0.405) + '，Balon 55% = ' + fmt(net * 0.495);
+    var calc = { net: rm(net), co: rm(sp.co), bernice: rm(sp.b), balon: rm(sp.ba), formula: formula };
+    var srcBtns = ['B', 'L', 'C', 'R'].map(function (k) {
+      var on = s.src === k;
+      return { label: k === 'C' ? '公司项目' : SRC[k][0], pick: function () { self.setState({ src: k }); },
+        style: 'padding:10px;border-radius:6px;font:inherit;font-size:14px;cursor:pointer;' + (on ? 'background:#1E7A62;color:#FFFFFF;border:1px solid #1E7A62;font-weight:600' : 'background:#FFFFFF;color:#374151;border:1px solid #D1D5DB') };
+    });
+
+    // ---------- Invoice 计算 ----------
+    var paidBy = {}, paysBy = {};
+    DB.payments.forEach(function (p) { paidBy[p.document_id] = (paidBy[p.document_id] || 0) + p.amount; (paysBy[p.document_id] = paysBy[p.document_id] || []).push(p); });
+    var invoices = DB.docs.filter(function (d) { return d.kind === 'invoice'; });
+    var quotesDocs = DB.docs.filter(function (d) { return d.kind === 'quote'; });
+    var payState = function (total, paid) {
+      if (total > 0 && paid >= total - 0.005) return ['已付清', OK];
+      if (paid > 0) return ['部分付款', WARN];
+      return ['未付', BAD];
+    };
+    var allRows = invoices.map(function (d) {
+      var es = effSrc(d.source, d.doc_date), n = d.total - d.cost, x = split(n, es), paid = paidBy[d.id] || 0, ps = payState(d.total, paid);
+      var isB = es === 'B', isB0 = es === 'B0', isOld = es === 'OLD', no10 = es === 'C0' || es === 'L0';
+      return { doc: d, id: d.doc_no, title: d.title || (d.lines[0] && d.lines[0].desc) || '', customer: cname(d.customer_id), custId: d.customer_id,
+        src: SRC[es][0], srcStyle: SRC[es][1], iso: d.doc_date, date: dmy(parseD(d.doc_date)), inv: d.doc_no,
+        sale: fmt(d.total), cost: fmt(d.cost), net: fmt(n), co: isOld ? '—' : fmt(x.co), bernice: isOld ? '—' : fmt(x.b), balon: isOld ? '—' : fmt(x.ba),
+        pay: ps[0], payStyle: ps[1], paid: fmt(paid), owing: fmt(Math.max(d.total - paid, 0)),
+        raw: { sale: d.total, cost: d.cost, net: n, paid: paid }, v: { co: x.co, b: x.b, ba: x.ba },
+        open: function () { self.openDoc(d); },
+        how: {
+          co: isOld ? '年底按余额 40/60' : (isB0 || no10 ? '2025 年不扣 10%' : (isB ? '另外 50%（' + fmt(n * 0.5) + '）× 10%' : '净利 ' + fmt(n) + ' × 10%')),
+          b: isOld ? '年底按余额 40%' : (isB0 ? '先拿 50% = ' + fmt(n * 0.5) + '，再拿 ' + fmt(n * 0.5) + ' × 45%' : (no10 ? fmt(n) + ' × 45%' : (isB ? '先拿 50% = ' + fmt(n * 0.5) + '，再拿 ' + fmt(n * 0.45) + ' × 45% = ' + fmt(n * 0.2025) : fmt(n * 0.9) + ' × 45%'))),
+          ba: isOld ? '年底按余额 60%' : (isB0 ? fmt(n * 0.5) + ' × 55%' : (no10 ? fmt(n) + ' × 55%' : (isB ? fmt(n * 0.45) + ' × 55%' : fmt(n * 0.9) + ' × 55%')))
+        } };
+    }).sort(function (a, b) { return a.iso < b.iso ? 1 : (a.iso > b.iso ? -1 : (a.inv < b.inv ? 1 : -1)); });
+    var sumOf = function (rows) {
+      var a = { sale: 0, cost: 0, net: 0, co: 0, b: 0, ba: 0, paid: 0, owing: 0 };
+      rows.forEach(function (r) { var k = r.raw; a.sale += k.sale; a.cost += k.cost; a.net += k.net; a.co += r.v.co; a.b += r.v.b; a.ba += r.v.ba; a.paid += k.paid; a.owing += Math.max(k.sale - k.paid, 0); });
+      return a;
+    };
+    var projects = allRows.filter(function (r) { return r.iso >= monthStart && r.iso <= monthEnd; });
+    var t = sumOf(projects);
+    var allOwing = sumOf(allRows).owing, owingN = allRows.filter(function (r) { return r.raw.sale - r.raw.paid > 0.005; }).length;
+
+    // 项目页
+    var pFrom = s.pFrom || monthStart, pTo = s.pTo || monthEnd;
+    var plist = allRows.filter(function (r) { return r.iso >= pFrom && r.iso <= pTo; });
+    var pt = sumOf(plist);
+    var presets = yearPresets(true).map(function (d) {
+      var on = pFrom === d[1] && pTo === d[2];
+      return { label: d[0], pick: function () { self.setState({ pFrom: d[1], pTo: d[2] }); },
+        style: 'padding:9px 14px;border-radius:999px;font:inherit;font-size:13px;cursor:pointer;' + (on ? 'background:#1E7A62;color:#FFFFFF;border:1px solid #1E7A62;font-weight:600' : 'background:#FFFFFF;color:#374151;border:1px solid #D1D5DB') };
+    });
+    var kbox = function (bd, bg) { return 'background:' + bg + ';border:1px solid ' + bd + ';border-radius:10px;padding:14px 16px'; };
+    var klab = function (c) { return 'font-size:13px;font-weight:600;color:' + c; };
+    var pKpis = [
+      { label: '收费', value: rm(pt.sale), box: kbox('#E5E7EB', '#FFFFFF'), labelStyle: klab('#4B5563') },
+      { label: '成本', value: rm(pt.cost), box: kbox('#E5E7EB', '#FFFFFF'), labelStyle: klab('#4B5563') },
+      { label: '净利润', value: rm(pt.net), box: kbox('#E5E7EB', '#FFFFFF'), labelStyle: klab('#16202A') },
+      { label: '公司 10%', value: rm(pt.co), box: kbox('#BFE3D5', '#EEF8F4'), labelStyle: klab('#155A48') },
+      { label: 'Bernice', value: rm(pt.b), box: kbox('#F1D5C3', '#FDF6F1'), labelStyle: klab('#8A3B0E') },
+      { label: 'Balon', value: rm(pt.ba), box: kbox('#C9D6EE', '#F3F6FC'), labelStyle: klab('#1D4485') }
+    ];
+    var ptot = { sale: fmt(pt.sale), cost: fmt(pt.cost), net: fmt(pt.net), co: fmt(pt.co), b: fmt(pt.b), ba: fmt(pt.ba), paid: fmt(pt.paid), owing: fmt(pt.owing) };
+    var tot = { net: rm(t.net), co: rm(t.co), bernice: rm(t.b), balon: rm(t.ba), saleN: fmt(t.sale), costN: fmt(t.cost), netN: fmt(t.net), coN: fmt(t.co), bernN: fmt(t.b), balN: fmt(t.ba) };
+    var pc = function (v) { return t.net > 0 ? Math.max(v / t.net * 100, 0).toFixed(2) : 0; };
+
+    // ---------- 开销 ----------
+    var expenses = DB.expenses.map(function (x) { return { id: x.id, date: x.exp_date, desc: x.description, cat: x.category, amount: x.amount, custId: x.customer_id }; });
+    var expMonth = expenses.filter(function (x) { return x.date >= monthStart && x.date <= monthEnd && x.cat !== '月薪' && x.cat !== '分红发放'; }).reduce(function (a, x) { return a + x.amount; }, 0);
+    var partner = t.b + t.ba, fromP = Math.min(SALARY, Math.max(partner, 0)), fromCo = SALARY - fromP;
+    var bDed = partner > 0 ? fromP * t.b / partner : 0, baDed = fromP - bDed;
+    var sal = { bDed: fmt(bDed), baDed: fmt(baDed), fromCo: fmt(fromCo), bFinal: rm(t.b - bDed), baFinal: rm(t.ba - baDed),
+      bTake: rm(t.b - bDed + SALARY), coFinal: rm(t.co - fromCo - expMonth), note: fromCo > 0 ? '本月分账不够付月薪，差额 RM ' + fmt(fromCo) + ' 从公司留存扣' : '本月分账足够付月薪，公司留存不用动' };
+    var fundBal = t.co - fromCo - expMonth;
+
+    var CATS = ['礼物', '出差 / 活动', 'Hosting / 域名 / 主题', '软件 / 订阅', '设备 / 维修', '会计 / 银行 / 注册', '外包 / 设计', '佣金', '月薪', '花红 / 红包', '分红发放', '其他'];
+    var CAT_STYLE = { '礼物': badge('#F6E3EE', '#8B1D5C'), '出差 / 活动': badge('#FCEFC7', '#7A5200'), 'Hosting / 域名 / 主题': badge('#DCE6F7', '#1D4485'), '软件 / 订阅': badge('#DDF2EA', '#155A48'), '设备 / 维修': badge('#EDE7F6', '#4C2C92'), '月薪': badge('#FBE7DA', '#8A3B0E'), '分红发放': badge('#FBE7DA', '#8A3B0E'), '花红 / 红包': badge('#FADADA', '#9B1C1C') };
+    var ef0 = s.ef || {};
+    var setEf = function (k) { return function (e) { var d = Object.assign({}, self.state.ef); d[k] = e.target.value; self.setState({ ef: d, expErr: '' }); }; };
+    var ef = { date: ef0.date || TODAY, desc: ef0.desc || '', cat: ef0.cat || '礼物', amount: ef0.amount || '', cust: ef0.cust || '',
+      onDate: setEf('date'), onDesc: setEf('desc'), onCat: setEf('cat'), onAmount: setEf('amount'), onCust: setEf('cust'),
+      err: s.expErr, hasErr: !!s.expErr,
+      save: function () {
+        var e0 = self.state.ef || {}, amt = num(e0.amount);
+        if (!(e0.desc || '').trim()) { self.setState({ expErr: '请填开销内容' }); return; }
+        if (!(amt > 0)) { self.setState({ expErr: '请填金额' }); return; }
+        self.act(async function () {
+          await dbInsert('expenses', { exp_date: e0.date || TODAY, description: e0.desc.trim(), category: e0.cat || '礼物', amount: r2(amt), customer_id: e0.cust ? +e0.cust : null });
+          self.setState({ ef: {}, expErr: '' });
+        }, '已记录开销');
+      } };
+    var eFrom = s.eFrom || monthStart, eTo = s.eTo || monthEnd;
+    var expIn = expenses.filter(function (x) { return x.date >= eFrom && x.date <= eTo; }).sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : b.id - a.id); });
+    var expRows = expIn.map(function (x) {
+      return { date: dmy(parseD(x.date)), desc: x.desc, cat: x.cat, catStyle: CAT_STYLE[x.cat] || MUTED, cust: x.custId ? cname(x.custId) : '—', amount: fmt(x.amount),
+        isConfirm: s.expDel === x.id, notConfirm: s.expDel !== x.id,
+        onDel: function () { self.setState({ expDel: x.id }); },
+        cancel: function () { self.setState({ expDel: null }); },
+        doDel: function () { self.act(async function () { await dbDelete('expenses', x.id); self.setState({ expDel: null }); }, '已删除'); } };
+    });
+    var expByCat = CATS.map(function (c) { var v = expIn.filter(function (x) { return x.cat === c; }).reduce(function (a, x) { return a + x.amount; }, 0); return { cat: c, v: v, total: rm(v) }; }).filter(function (k) { return k.v > 0; });
+    var ePresets = yearPresets(true).map(function (d) {
+      var on = eFrom === d[1] && eTo === d[2];
+      return { label: d[0], pick: function () { self.setState({ eFrom: d[1], eTo: d[2] }); },
+        style: 'padding:9px 14px;border-radius:999px;font:inherit;font-size:13px;cursor:pointer;' + (on ? 'background:#1E7A62;color:#FFFFFF;border:1px solid #1E7A62;font-weight:600' : 'background:#FFFFFF;color:#374151;border:1px solid #D1D5DB') };
+    });
+
+    // ---------- 全部交易 ----------
+    var tFrom = s.tFrom || Y + '-01-01', tTo = s.tTo || Y + '-12-31', tType = s.tType || 'all', tQ = (s.tQ || '').toLowerCase(), tAsc = !!s.tAsc;
+    var tx = [];
+    allRows.forEach(function (r) {
+      tx.push({ iso: r.iso, kind: 'inc', item: r.title, no: r.inv, custId: r.custId, tag: SRC[effSrc(r.doc.source, r.iso)][0], tagStyle: r.srcStyle,
+        inc: r.raw.sale, cost: r.raw.cost, exp: 0, net: r.raw.net, doc: r.doc, id: r.doc.id });
+    });
+    expenses.forEach(function (x) {
+      tx.push({ iso: x.date, kind: 'exp', item: x.desc, no: '', custId: x.custId, tag: x.cat, tagStyle: CAT_STYLE[x.cat] || MUTED, inc: 0, cost: 0, exp: x.amount, net: -x.amount, id: x.id });
+    });
+    tx = tx.filter(function (z) {
+      if (z.iso < tFrom || z.iso > tTo) return false;
+      if (tType !== 'all' && z.kind !== tType) return false;
+      if (tQ) { var nm = z.custId != null ? cname(z.custId) : ''; if ((z.item + ' ' + nm + ' ' + z.no).toLowerCase().indexOf(tQ) < 0) return false; }
+      return true;
+    }).sort(function (a, b) { return a.iso < b.iso ? -1 : (a.iso > b.iso ? 1 : (a.kind === b.kind ? a.id - b.id : (a.kind === 'inc' ? -1 : 1))); });
+    var runBal = 0, tTot = { inc: 0, cost: 0, exp: 0, net: 0 };
+    tx.forEach(function (z) { runBal += z.net; z.run = runBal; tTot.inc += z.inc; tTot.cost += z.cost; tTot.exp += z.exp; tTot.net += z.net; });
+    var ordered = tAsc ? tx : tx.slice().reverse();
+    var netSt = function (v, head) { return 'padding:' + (head ? '8px' : '6px') + ' 10px;text-align:right;font-family:IBM Plex Mono,monospace;font-weight:' + (head ? '700' : '600') + ';color:' + (v < 0 ? '#9B1C1C' : '#16202A') + (head ? ';border-top:2px solid #BFE3D5' : ''); };
+    var dash0 = function (v) { return v ? fmt(v) : ''; };
+    var tRows = [], lastM = null, MN = ['', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    var monthSums = {};
+    ordered.forEach(function (z) { var m = z.iso.slice(0, 7), a = monthSums[m] = monthSums[m] || { inc: 0, cost: 0, exp: 0, net: 0, n: 0 }; a.inc += z.inc; a.cost += z.cost; a.exp += z.exp; a.net += z.net; a.n++; });
+    ordered.forEach(function (z) {
+      var m = z.iso.slice(0, 7);
+      if (m !== lastM) {
+        lastM = m; var sm = monthSums[m];
+        tRows.push({ isHead: true, isRow: false, label: m.slice(0, 4) + ' 年 ' + MN[+m.slice(5, 7)], count: sm.n,
+          inc: dash0(sm.inc), cost: dash0(sm.cost), exp: dash0(sm.exp), net: (sm.net < 0 ? '−' : '') + fmt(Math.abs(sm.net)), netStyle: netSt(sm.net, true) });
+      }
+      var c = z.custId != null ? custById[z.custId] : null, linked = !!(c && !c.is_deleted);
+      tRows.push({ isHead: false, isRow: true, date: dmy(parseD(z.iso)), item: z.item, no: z.no, hasDoc: !!z.doc,
+        openDoc: function () { if (z.doc) self.openDoc(z.doc); },
+        cust: c ? c.name : (z.kind === 'inc' ? '[未关联顾客]' : '—'), hasLink: linked, noLink: !linked,
+        openCust: function () { self.setState({ tab: 'cust', custDetail: z.custId, backTab: 'txn' }); },
+        tag: z.tag, tagStyle: z.tagStyle,
+        inc: dash0(z.inc), cost: dash0(z.cost), exp: dash0(z.exp), net: (z.net < 0 ? '−' : '+') + fmt(Math.abs(z.net)), netStyle: netSt(z.net, false),
+        run: (z.run < 0 ? '−' : '') + fmt(Math.abs(z.run)),
+        rowStyle: 'border-bottom:1px solid #EEF0F2;background:' + (z.kind === 'exp' ? '#FFFBFB' : '#FFFFFF') });
+    });
+    var tPresets = yearPresets(true).map(function (d) { return { label: d[0], style: chip(tFrom === d[1] && tTo === d[2]), pick: function () { self.setState({ tFrom: d[1], tTo: d[2] }); } }; });
+    var tTypes = [['all', '全部'], ['inc', '只看收入'], ['exp', '只看开销']].map(function (d) { return { label: d[1], style: chip(tType === d[0]), pick: function () { self.setState({ tType: d[0] }); } }; });
+    var kv = function (c) { return 'font-family:IBM Plex Mono,monospace;font-size:18px;font-weight:500;margin-top:4px;color:' + c; };
+    var tKpis = [
+      { label: '收入', value: rm(tTot.inc), valStyle: kv('#11603F') },
+      { label: '直接成本', value: rm(tTot.cost), valStyle: kv('#4B5563') },
+      { label: '开销', value: rm(tTot.exp), valStyle: kv('#9B1C1C') },
+      { label: '净额', value: (tTot.net < 0 ? '−' : '') + rm(Math.abs(tTot.net)), valStyle: kv(tTot.net < 0 ? '#9B1C1C' : '#16202A') },
+      { label: '笔数', value: String(tx.length), valStyle: kv('#16202A') }
+    ];
+
+    // ---------- 顾客列表 / 新增 / 编辑 ----------
+    var q = (s.q || '').toLowerCase();
+    var custCode = function (id) { return 'C' + String(id).padStart(3, '0'); };
+    var startEdit = function (id) {
+      var c = custById[id];
+      var rows = (renByCust[id] || []).map(function (r) { return { id: r.id, item: r.item, fee: String(r.fee), cost: r.cost != null ? String(r.cost) : '', due: r.due_date, remark: r.remark }; });
+      if (!rows.length) rows.push({ id: null, item: '', fee: '', cost: '', due: '', remark: '' });
+      return { editId: id, draft: { name: c.name, alias: c.alias || c.ssm || '', addr: c.addr, phone: c.phone, email: c.email }, draftRen: rows, draftRemoved: [], editErr: '' };
+    };
+    var customers = activeCust.map(function (c) {
+      return { idx: c.id, id: custCode(c.id), name: c.name, alias: c.alias || c.ssm, addr: c.addr || '—', phone: c.phone || '—',
+        isConfirm: s.confirmDel === c.id, notConfirm: s.confirmDel !== c.id,
+        open: function () { self.setState({ custDetail: c.id, editId: null, confirmDel: null, backTab: null }); },
+        onEdit: function () { self.setState(Object.assign(startEdit(c.id), { confirmDel: null, showNewCust: false })); },
+        onDel: function () { self.setState({ confirmDel: c.id }); },
+        doDel: function () { self.act(async function () { await dbUpdate('customers', c.id, { is_deleted: true }); self.setState({ confirmDel: null, editId: self.state.editId === c.id ? null : self.state.editId }); }, '已删除「' + c.name + '」'); },
+        cancelDel: function () { self.setState({ confirmDel: null }); } };
+    }).filter(function (c) { return !q || (c.name + ' ' + c.alias + ' ' + c.phone + ' ' + c.addr).toLowerCase().indexOf(q) >= 0; })
+      .sort(function (a, b) { return a.idx - b.idx; });
+
+    var setNc = function (k) { return function (e) { var d = Object.assign({}, self.state.nc); d[k] = e.target.value; self.setState({ nc: d, ncErr: '' }); }; };
+    var ncFields = [['公司名称 / 名字 *', 'name', 'ABC Sdn Bhd'], ['SSM 号码', 'ssm', '202401012345'], ['Address 1', 'addr1', 'No, Jalan ...'],
+      ['Address 2', 'addr2', 'Taman ...'], ['Postcode & State', 'post', '81000 Kulai, Johor'], ['电话', 'phone', '01X-XXX XXXX'], ['Email', 'email', 'name@company.com']]
+      .map(function (f) { return { label: f[0], ph: f[2], value: s.nc[f[1]] || '', onChange: setNc(f[1]) }; });
+    var setRen = function (k, f) { return function (e) { var rows = self.state.ncRen.map(function (r) { return Object.assign({}, r); }); rows[k][f] = e.target.value; self.setState({ ncRen: rows }); }; };
+    var ncRows = s.ncRen.map(function (r, k) {
+      return { n: k + 1, item: r.item, fee: r.fee, cost: r.cost, due: r.due,
+        onItem: setRen(k, 'item'), onFee: setRen(k, 'fee'), onCost: setRen(k, 'cost'), onDue: setRen(k, 'due'),
+        canRemove: s.ncRen.length > 1, remove: function () { self.setState({ ncRen: self.state.ncRen.filter(function (_, j) { return j !== k; }) }); } };
+    });
+    var saveNew = function () {
+      var nc = self.state.nc, nm = (nc.name || '').trim();
+      if (!nm) { self.setState({ ncErr: '请填公司名称 / 名字' }); return; }
+      if (self.state.ncRen.some(function (r) { return (r.item.trim() || r.fee) && !r.due; })) { self.setState({ ncErr: '续约项目要填到期日，系统才能提醒' }); return; }
+      var good = self.state.ncRen.filter(function (r) { return r.item.trim() && r.due; });
+      var addr = [nc.addr1, nc.addr2, nc.post].filter(function (x) { return x && x.trim(); }).map(function (x) { return x.trim(); }).join(', ');
+      self.act(async function () {
+        var c = await dbInsert('customers', { name: nm, ssm: (nc.ssm || '').trim(), addr: addr, phone: (nc.phone || '').trim(), email: (nc.email || '').trim() });
+        for (var i = 0; i < good.length; i++) await dbInsert('renewals', { customer_id: c.id, item: good[i].item.trim(), due_date: good[i].due, fee: r2(num(good[i].fee)), cost: r2(num(good[i].cost)) });
+        self.setState({ nc: {}, ncRen: [{ item: '', fee: '', cost: '', due: '' }], showNewCust: false, ncErr: '',
+          ncMsg: '已新增「' + nm + '」' + (good.length ? '，' + good.length + ' 个续约项目已加入续约页' : '') });
+      });
+    };
+    var editing = s.editId != null && !!custById[s.editId];
+    var setDraft = function (k) { return function (e) { var d = Object.assign({}, self.state.draft); d[k] = e.target.value; self.setState({ draft: d }); }; };
+    var editFields = [['公司名称 / 名字', 'name'], ['别名 / SSM', 'alias'], ['地址', 'addr'], ['电话', 'phone'], ['Email', 'email']].map(function (f) {
+      return { label: f[0], value: s.draft[f[1]] || '', onChange: setDraft(f[1]) };
+    });
+    var saveEdit = function () {
+      var st = self.state, dr = st.draft, id = st.editId;
+      if (!(dr.name || '').trim()) { self.setState({ editErr: '请填公司名称 / 名字' }); return; }
+      if (st.draftRen.some(function (r) { return (r.item.trim() || r.fee) && !r.due; })) { self.setState({ editErr: '续约项目要填到期日，系统才能提醒' }); return; }
+      self.act(async function () {
+        var al = (dr.alias || '').trim(), isSsm = /^\d{6,}|-K$/i.test(al);
+        await dbUpdate('customers', id, { name: dr.name.trim(), alias: isSsm ? '' : al, ssm: isSsm ? al : '', addr: (dr.addr || '').trim(), phone: (dr.phone || '').trim(), email: (dr.email || '').trim() });
+        for (var i = 0; i < st.draftRemoved.length; i++) await dbUpdate('renewals', st.draftRemoved[i], { is_active: false });
+        for (var j = 0; j < st.draftRen.length; j++) {
+          var r = st.draftRen[j], filled = r.item.trim() && r.due;
+          var row = { item: r.item.trim(), due_date: r.due, fee: r2(num(r.fee)), cost: r2(num(r.cost)) };
+          if (r.id) { if (filled) await dbUpdate('renewals', r.id, row); else await dbUpdate('renewals', r.id, { is_active: false }); }
+          else if (filled) await dbInsert('renewals', Object.assign({ customer_id: id }, row));
+        }
+        self.setState({ editId: null, editErr: '', ncMsg: '已更新「' + dr.name.trim() + '」，续约页已同步' });
+      });
+    };
+
+    // ---------- 顾客详情 ----------
+    var det = { name: '', alias: '', addr: '', phone: '', id: '', kpis: [], renew: [], hasRenew: false, events: [], docs: [], hasEvents: false, noEvents: true, shown: 0, docCount: 0 };
+    var detC = s.custDetail != null ? custById[s.custDetail] : null;
+    if (detC) {
+      var cid = detC.id, rsd = renByCust[cid] || [];
+      var TYPE = { invoice: ['Invoice', badge('#DCE6F7', '#1D4485')], quote: ['Quotation', MUTED], pay: ['收款', OK], exp: ['开销', badge('#F6E3EE', '#8B1D5C')] };
+      var cdocs = DB.docs.filter(function (d) { return d.customer_id === cid; });
+      var ev = [];
+      cdocs.forEach(function (d) {
+        var st = d.kind === 'invoice' ? payState(d.total, paidBy[d.id] || 0) : [d.status || '草稿', d.status === '已接受' || d.status === '已转 Invoice' ? OK : MUTED];
+        ev.push({ iso: d.doc_date, k: d.kind, no: d.doc_no, desc: d.title, amount: d.total, status: st[0], stStyle: st[1], d: d, ord: 1 });
+        (paysBy[d.id] || []).forEach(function (p) { ev.push({ iso: p.pay_date, k: 'pay', no: d.doc_no, desc: '收款' + (p.note && p.note !== 'Excel 导入' ? '（' + p.note + '）' : ''), amount: p.amount, ord: 0 }); });
+      });
+      expenses.forEach(function (x) { if (x.custId === cid) ev.push({ iso: x.date, k: 'exp', no: '', desc: x.cat + '：' + x.desc, amount: x.amount, ord: 2 }); });
+      ev.sort(function (a, b) { return a.iso < b.iso ? 1 : (a.iso > b.iso ? -1 : a.ord - b.ord); });
+      var billed = cdocs.filter(function (d) { return d.kind === 'invoice'; }).reduce(function (a, d) { return a + d.total; }, 0);
+      var paidC = cdocs.reduce(function (a, d) { return a + (d.kind === 'invoice' ? (paidBy[d.id] || 0) : 0); }, 0);
+      var events = ev.slice(0, 80).map(function (e) {
+        return { date: dmy(parseD(e.iso)), type: TYPE[e.k][0], typeStyle: TYPE[e.k][1], no: e.no || '—', desc: e.desc,
+          amount: (e.k === 'pay' ? '+ ' : (e.k === 'exp' ? '− ' : '')) + fmt(e.amount), status: e.status || '', hasStatus: !!e.status, statusStyle: e.stStyle || MUTED };
+      });
+      var docList = cdocs.slice().sort(function (a, b) { return a.doc_date < b.doc_date ? 1 : -1; }).map(function (d) {
+        return { no: d.doc_no + (d.kind === 'quote' ? '（报价）' : ''), date: dmy(parseD(d.doc_date)), amount: fmt(d.total),
+          dlLabel: d.kind === 'quote' ? '下载 Quotation' : '下载 Invoice', onDl: function () { self.downloadDoc(self.docPdf(d)); }, open: function () { self.openDoc(d); } };
+      });
+      det = { name: detC.name, alias: detC.alias || detC.ssm, addr: detC.addr || '[待补地址]', phone: detC.phone || '[待补]', id: custCode(cid),
+        kpis: [{ label: '累计开单', value: rm(billed) }, { label: '已收款', value: rm(paidC) }, { label: '未收款', value: rm(Math.max(billed - paidC, 0)) },
+          { label: '年度续约', value: rm(rsd.reduce(function (a, r) { return a + r.fee; }, 0)) }],
+        renew: rsd.map(function (r) { return { item: r.item, due: dmy(parseD(r.due_date)), fee: fmt(r.fee), cost: fmt(r.cost || 0), remark: r.remark }; }),
+        hasRenew: rsd.length > 0, events: events, docs: docList, docCount: docList.length, shown: events.length,
+        hasEvents: events.length > 0, noEvents: events.length === 0,
+        onEdit: function () { self.setState(Object.assign(startEdit(cid), { custDetail: null, tab: 'cust' })); },
+        newInv: function () { self.setState({ tab: 'inv', custDetail: null, edInv: newEditor('invoice', cid) }); },
+        newQuo: function () { self.setState({ tab: 'quo', custDetail: null, edQuo: newEditor('quote', cid) }); } };
+    }
+
+    // ---------- 分红 ----------
+    var who = s.divWho, WHO = { all: '全部', co: '公司留存', b: 'Bernice', ba: 'Balon' };
+    var divBtns = ['all', 'co', 'b', 'ba'].map(function (k) {
+      var on = who === k;
+      return { label: WHO[k], pick: function () { self.setState({ divWho: k }); },
+        style: 'padding:8px 16px;border-radius:999px;font:inherit;font-size:14px;cursor:pointer;' + (on ? 'background:#1E7A62;color:#FFFFFF;border:1px solid #1E7A62;font-weight:600' : 'background:#FFFFFF;color:#374151;border:1px solid #D1D5DB') };
+    });
+    var divOneRows = who === 'all' ? [] : projects.map(function (p) {
+      return { date: p.date, inv: p.inv, open: p.open, title: p.title, customer: p.customer, src: p.src, srcStyle: p.srcStyle, net: p.net, val: fmt(p.v[who]), how: p.how[who] };
+    });
+    var divOneTotal = who === 'all' ? '' : fmt(projects.reduce(function (a, p) { return a + p.v[who]; }, 0));
+
+    // ---------- 续约 ----------
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var ys = { n: 0, sum: 0, cost: 0, net: 0, co: 0, b: 0, ba: 0, over: 0, soon: 0 };
+    var renewals = DB.renewals.filter(function (r) { return r.is_active && !r.is_own && custById[r.customer_id] && !custById[r.customer_id].is_deleted; }).map(function (r) {
+      var days = Math.round((parseD(r.due_date) - today) / 86400000), n = r.fee - (r.cost || 0), x = split(n, 'R');
+      ys.n++; ys.sum += r.fee; ys.cost += (r.cost || 0); ys.net += n; ys.co += x.co; ys.b += x.b; ys.ba += x.ba;
+      var b, st;
+      if (days < 0) { b = '已过期 ' + (-days) + ' 天'; st = BAD; ys.over++; }
+      else if (days <= 30) { b = days + ' 天后到期'; st = WARN; ys.soon++; }
+      else { b = '正常'; st = MUTED; }
+      return { r: r, gi: r.id, isDone: false, customer: cname(r.customer_id), custId: r.customer_id, item: r.item, remark: r.remark, days: days, due: dmy(parseD(r.due_date)),
+        fee: fmt(r.fee), cost: fmt(r.cost || 0), net: fmt(n), co: fmt(x.co), bernice: fmt(x.b), balon: fmt(x.ba), badge: b, badgeStyle: st,
+        canRenew: true, urgent: days <= 30, renew: function () { self.renewItem(r, false); } };
+    }).sort(function (a, b) { return a.days - b.days; });
+    var alerts = renewals.filter(function (r) { return r.urgent; });
+    var ownList = DB.renewals.filter(function (r) { return r.is_active && r.is_own; });
+    var bar = function (days) {
+      var neg = days < 0, w = neg ? Math.min(-days, 120) / 120 * 48 : Math.min(days, 365) / 365 * 96;
+      var col = neg ? '#D93B3B' : (days <= 30 ? '#F08A24' : '#F5C451');
+      var st = 'height:14px;border-radius:2px;background:' + col + ';width:' + Math.max(w, 2).toFixed(1) + 'px';
+      return { negBar: neg ? st : 'width:0', posBar: neg ? 'width:0' : st,
+        daysStyle: 'margin-left:8px;min-width:36px;text-align:right;font-family:IBM Plex Mono,monospace;font-weight:600;color:' + (neg ? '#9B1C1C' : (days <= 30 ? '#9A4A00' : '#16202A')) };
+    };
+    var rtSort = s.rtSort || 'cust';
+    var firstIdx = {};
+    renewals.forEach(function (r) { if (firstIdx[r.custId] == null || r.gi < firstIdx[r.custId]) firstIdx[r.custId] = r.gi; });
+    var custRows = renewals.slice().sort(rtSort === 'cust' ? function (a, b) { return firstIdx[a.custId] - firstIdx[b.custId] || a.gi - b.gi; } : function (a, b) { return a.days - b.days; });
+    var rtRows = custRows.map(function (r, k) {
+      var prev = custRows[k - 1], newGroup = rtSort === 'cust' && k > 0 && prev.custId !== r.custId;
+      var bg = r.days < 0 ? '#FFF5F5' : (r.days <= 30 ? '#FFFAF0' : '#FFFFFF');
+      var showName = !(rtSort === 'cust' && !newGroup && k > 0);
+      return Object.assign({}, r, bar(r.days), { daysTxt: String(r.days), customer: showName ? r.customer : '', hasLink: showName, noLink: !showName,
+        openCust: function () { self.setState({ tab: 'cust', custDetail: r.custId, backTab: 'renew' }); },
+        rowStyle: 'background:' + bg + ';' + (newGroup ? 'border-top:8px solid #F2F5F4' : ''),
+        netStyle: 'padding:6px 10px;text-align:right;font-family:IBM Plex Mono,monospace;' + (r.r.fee - (r.r.cost || 0) < 0 ? 'color:#9B1C1C;font-weight:700' : '') });
+    });
+    var ownCost = 0;
+    ownList.forEach(function (o, k) {
+      var days = Math.round((parseD(o.due_date) - today) / 86400000);
+      ownCost += o.cost || 0;
+      rtRows.push(Object.assign({ due: dmy(parseD(o.due_date)), daysTxt: String(days), customer: k === 0 ? 'Webbalances（公司自用）' : '', item: o.item, fee: '—', cost: o.cost == null ? '[待填]' : fmt(o.cost), net: '—',
+        canRenew: true, isDone: false, hasLink: false, noLink: true, renew: function () { self.renewItem(o, true); },
+        rowStyle: 'background:#F7F8FA;' + (k === 0 ? 'border-top:8px solid #F2F5F4' : ''), netStyle: 'padding:6px 10px;text-align:right;color:#9CA3AF' }, bar(days)));
+    });
+    var rtSortBtns = [['cust', '按顾客'], ['date', '按到期日']].map(function (d) {
+      var on = rtSort === d[0];
+      return { label: d[1], pick: function () { self.setState({ rtSort: d[0] }); },
+        style: 'padding:6px 12px;border-radius:999px;font:inherit;font-size:13px;cursor:pointer;' + (on ? 'background:#1E7A62;color:#FFFFFF;border:1px solid #1E7A62;font-weight:600' : 'background:#FFFFFF;color:#374151;border:1px solid #D1D5DB') };
+    });
+
+    // ---------- Quotation 列表 ----------
+    var QST = { '草稿': MUTED, '已发出': WARN, '已接受': OK, '已转 Invoice': badge('#DDF2EA', '#155A48'), '已过期': BAD };
+    var quotes = quotesDocs.slice().sort(function (a, b) { return a.doc_date < b.doc_date ? 1 : (a.doc_date > b.doc_date ? -1 : b.id - a.id); }).map(function (d) {
+      var st = d.status || '草稿';
+      var expired = st !== '已转 Invoice' && st !== '已接受' && d.valid_until && d.valid_until < TODAY;
+      var shown = expired ? '已过期' : st;
+      return { no: d.doc_no, date: dmy(parseD(d.doc_date)), customer: cname(d.customer_id), amount: fmt(d.total), status: shown, style: QST[shown] || MUTED,
+        canConvert: st !== '已转 Invoice', convert: function () { self.convertQuote(d); }, open: function () { self.openDoc(d); },
+        openCust: function () { if (custById[d.customer_id]) self.setState({ tab: 'cust', custDetail: d.customer_id, backTab: null }); },
+        onDl: function () { self.downloadDoc(self.docPdf(d)); } };
+    });
+
+    // ---------- 编辑器 ----------
+    var isEditor = s.tab === 'inv' || s.tab === 'quo';
+    var edKind = s.tab === 'quo' ? 'quote' : 'invoice';
+    var E = s[this.edKey(edKind)];
+    var setE = function (k, fn) { return function (e) { var p = {}; p[k] = fn ? fn(e.target.value) : e.target.value; if (k === 'no') p.noTouched = true; self.setEd(edKind, Object.assign(p, { err: '' })); }; };
+    var edLines = E.lines.map(function (l, k) {
+      var setL = function (f) { return function (e) { var rows = self.state[self.edKey(edKind)].lines.map(function (x) { return Object.assign({}, x); }); rows[k][f] = e.target.value; self.setEd(edKind, { lines: rows, err: '' }); }; };
+      return { desc: l.desc, qty: l.qty, price: l.price, amt: fmt(num(l.qty) * num(l.price)),
+        onDesc: setL('desc'), onQty: setL('qty'), onPrice: setL('price'),
+        remove: function () { var rows = self.state[self.edKey(edKind)].lines.filter(function (_, j) { return j !== k; }); if (!rows.length) rows = [{ desc: '', qty: '1', price: '' }]; self.setEd(edKind, { lines: rows }); } };
+    });
+    var edTotal = E.lines.reduce(function (a, l) { return a + num(l.qty) * num(l.price); }, 0);
+    var edCust = E.custId ? custById[+E.custId] : null;
+    var edSaved = E.id ? DB.docs.filter(function (d) { return d.id === E.id; })[0] : null;
+    var edNo = E.noTouched ? E.no : this.nextNo(edKind, E.date || TODAY, E.id);
+    var edNet = edTotal - num(E.cost), edSplit = split(edNet, effSrc(E.source, E.date || TODAY)), edOld = effSrc(E.source, E.date || TODAY) === 'OLD';
+    var edPaid = E.id ? (paidBy[E.id] || 0) : 0, edPs = payState(edSaved ? edSaved.total : edTotal, edPaid);
+    var dirty = edSaved && (r2(edSaved.total) !== r2(edTotal));
+    var ed = {
+      isInvoice: edKind === 'invoice', isQuote: edKind === 'quote', kindLabel: edKind === 'quote' ? 'QUOTATION' : 'INVOICE', kindWord: edKind === 'quote' ? 'Quotation' : 'Invoice',
+      noLabel: edKind === 'quote' ? 'QUOTATION #' : 'INVOICE #', toLabel: edKind === 'quote' ? 'QUOTE TO :' : 'BILL TO :',
+      title: (E.id ? '编辑 ' : '新建 ') + (edKind === 'quote' ? 'Quotation' : 'Invoice') + (E.id ? ' · ' + E.no : ''),
+      subtitle: E.id ? '改完记得按「保存」' + (edSaved && edSaved.is_legacy ? ' · 这张是从 Excel 导入的' : '') : (edKind === 'quote' ? '选顾客、填项目，保存后可以下载 PDF 发给顾客' : '选顾客、填项目和来源，保存后就计入分账'),
+      date: E.date, no: edNo, valid: E.valid, custId: E.custId, source: E.source, cost: E.cost, status: E.status,
+      onDate: setE('date'), onNo: setE('no'), onValid: setE('valid'), onCust: setE('custId'), onSource: setE('source'), onCost: setE('cost'), onStatus: setE('status'),
+      addr: edCust ? [edCust.addr, edCust.phone].filter(Boolean).join('\n') : '',
+      renChips: (edCust ? (renByCust[edCust.id] || []) : []).map(function (r) {
+        return { label: r.item + ' · RM ' + fmt(r.fee), add: function () {
+          var cur = self.state[self.edKey(edKind)], rows = cur.lines.filter(function (l) { return (l.desc || '').trim() || num(l.price); });
+          rows.push({ desc: r.item + ' yearly renewal', qty: '1', price: String(r.fee) });
+          var patch = { lines: rows };
+          if (edKind === 'invoice' && !cur.id) { patch.source = 'R'; patch.cost = String(r2(num(cur.cost) + (r.cost || 0))); }
+          self.setEd(edKind, patch);
+        } };
+      }),
+      lines: edLines, total: fmt(edTotal),
+      net: rm(edNet), co: edOld ? '—' : rm(edSplit.co), b: edOld ? '—' : rm(edSplit.b), ba: edOld ? '—' : rm(edSplit.ba),
+      addLine: function () { self.setEd(edKind, { lines: self.state[self.edKey(edKind)].lines.concat([{ desc: '', qty: '1', price: '' }]) }); },
+      err: E.err, hasErr: !!E.err, isSaved: !!E.id, saveLabel: s.busy ? '正在保存…' : (E.id ? '保存修改' : '保存'),
+      save: function () { self.saveEd(edKind); },
+      pdf: function () {
+        var row = self.edToRow(self.state[self.edKey(edKind)]);
+        if (!row.customer_id) { self.setEd(edKind, { err: '请先选择顾客' }); return; }
+        self.downloadDoc(self.docPdf(Object.assign({ id: E.id }, row)));
+      },
+      canConvert: edKind === 'quote' && !!edSaved && edSaved.status !== '已转 Invoice',
+      convert: function () { self.convertQuote(edSaved); },
+      del: function () { if (edSaved) self.deleteDoc(edSaved); },
+      reset: function () { var p = {}; p[self.edKey(edKind)] = newEditor(edKind); self.setState(p); },
+      showPay: edKind === 'invoice' && !!edSaved, payStatus: edPs[0] + (dirty ? '（金额已改，请先保存）' : ''), payStyle: edPs[1],
+      paid: fmt(edPaid), owing: fmt(Math.max((edSaved ? edSaved.total : 0) - edPaid, 0)),
+      pays: (E.id ? (paysBy[E.id] || []) : []).slice().sort(function (a, b) { return a.pay_date < b.pay_date ? -1 : 1; }).map(function (p) {
+        return { date: dmy(parseD(p.pay_date)), amount: fmt(p.amount), note: p.note,
+          del: function () { if (confirm('删除这笔 RM ' + fmt(p.amount) + ' 的收款？')) self.act(async function () { await dbDelete('payments', p.id); }, '已删除收款'); } };
+      }),
+      hasRenChips: false
+    };
+    ed.hasRenChips = ed.renChips.length > 0;
+    var owingNow = edSaved ? Math.max(edSaved.total - edPaid, 0) : 0;
+    var srcOpts = [['B', 'Bernice 自接'], ['L', 'Balon 自接'], ['C', '公司项目'], ['R', '续约']].map(function (o) { return { v: o[0], label: o[1] }; });
+
+    // ---------- 全年打包 ----------
+    var allInv = allRows.map(function (r) { return { no: r.inv, iso: r.iso, month: r.iso.slice(0, 7), amount: r.raw.sale, d: r.doc }; }).sort(function (a, b) { return a.iso < b.iso ? -1 : (a.iso > b.iso ? 1 : (a.no < b.no ? -1 : 1)); });
+    var zipYearsAll = yearList.filter(function (y) { return allInv.some(function (x) { return +x.iso.slice(0, 4) === y; }); }).map(String);
+    var zipYear = s.zipYear && zipYearsAll.indexOf(s.zipYear) >= 0 ? s.zipYear : (zipYearsAll.indexOf(String(Y)) >= 0 ? String(Y) : zipYearsAll[0]);
+    var yearInv = allInv.filter(function (x) { return x.iso.slice(0, 4) === zipYear; });
+    var zipMonths = [];
+    for (var mm = 1; mm <= 12; mm++) {
+      var key = zipYear + '-' + pad2(mm), inM = yearInv.filter(function (x) { return x.month === key; });
+      var sumM = inM.reduce(function (a, x) { return a + x.amount; }, 0);
+      zipMonths.push({ folder: key, count: inM.length, total: inM.length ? rm(sumM) : '—',
+        box: 'padding:10px 12px;border-radius:8px;border:1px solid ' + (inM.length ? '#BFE3D5;background:#EEF8F4' : '#EEF0F2;background:#F7F8FA;opacity:.6') });
+    }
+
+    return Object.assign(base, {
+      tabs: tabs, monthLabel: monthLabel, userEmail: s.userEmail, loadedAt: s.loadedAt ? '资料载入于 ' + s.loadedAt : '',
+      reload: function () { self.reload(false); }, exportAll: function () { self.exportAll(); },
+      logout: function () { if (confirm('确定登出？')) SB.auth.signOut(); },
+      isCustDetail: s.tab === 'cust' && !!detC, det: det,
+      goBack: function () { self.setState({ custDetail: null, tab: s.backTab || 'cust', backTab: null }); },
+      backLabel: ({ renew: '← 返回续约总表', txn: '← 返回全部交易' })[s.backTab] || '← 返回顾客列表',
+      isExp: s.tab === 'exp', expFormOpen: s.expFormOpen !== false, expFormClosed: s.expFormOpen === false,
+      toggleExpForm: function () { self.setState({ expFormOpen: s.expFormOpen === false }); }, ef: ef, expCats: CATS.map(function (c) { return { n: c }; }), expRows: expRows, expByCat: expByCat, ePresets: ePresets, eFrom: eFrom, eTo: eTo,
+      expTotal: rm(expIn.reduce(function (a, x) { return a + x.amount; }, 0)), expCount: expIn.length, expEmpty: expIn.length === 0, expHas: expIn.length > 0,
+      onEFrom: function (e) { if (e.target.value) self.setState({ eFrom: e.target.value }); },
+      onETo: function (e) { if (e.target.value) self.setState({ eTo: e.target.value }); },
+      isDiv: s.tab === 'div', divBtns: divBtns, divAll: who === 'all', divOne: who !== 'all', divLabel: WHO[who], divOneRows: divOneRows, divOneTotal: divOneTotal,
+      isTxn: s.tab === 'txn', tRows: tRows, tPresets: tPresets, tTypes: tTypes, tKpis: tKpis, tFrom: tFrom, tTo: tTo, tQ: s.tQ || '', tEmpty: tx.length === 0,
+      onTFrom: function (e) { if (e.target.value) self.setState({ tFrom: e.target.value }); },
+      onTTo: function (e) { if (e.target.value) self.setState({ tTo: e.target.value }); },
+      onTQ: function (e) { self.setState({ tQ: e.target.value }); },
+      tSortLabel: tAsc ? '最旧在上 ↑' : '最新在上 ↓', tSortToggle: function () { self.setState({ tAsc: !tAsc }); },
+      isInvDl: s.tab === 'invDl', isQuoList: s.tab === 'quoList',
+      goNewQuo: function () { self.setState({ tab: 'quo', edQuo: newEditor('quote') }); }, goQuoList: function () { self.setState({ tab: 'quoList' }); },
+      isDash: s.tab === 'dash', isCust: s.tab === 'cust' && !detC, isProj: s.tab === 'proj', isEditor: isEditor, isRenew: s.tab === 'renew',
+      goRenew: function () { self.setState({ tab: 'renew' }); },
+      kpis: [
+        { label: '本月营业额', value: rm(t.sale), sub: projects.length + ' 张 Invoice' },
+        { label: '直接成本', value: rm(t.cost), sub: '外包、硬件、Hosting' },
+        { label: '净利润', value: rm(t.net), sub: t.sale > 0 ? '利润率 ' + (t.net / t.sale * 100).toFixed(1) + '%' : '本月还没有 Invoice' },
+        { label: '未收款', value: rm(allOwing), sub: owingN + ' 张 Invoice 还没付清' }
+      ],
+      tot: tot, sal: sal,
+      pFrom: pFrom, pTo: pTo, presets: presets, plist: plist, pKpis: pKpis, ptot: ptot,
+      pCount: plist.length, hasOld: plist.some(function (r) { return r.iso < '2025-01-01'; }),
+      oldNote: '这段日期包含 2020–2024 年的项目：当年是年底按银行余额分 Bernice 40% / Balon 60%，所以上面的 Bernice / Balon 只算 2025 年以后的项目。', pEmpty: plist.length === 0, pHas: plist.length > 0,
+      pRange: dmy(parseD(pFrom)) + ' – ' + dmy(parseD(pTo)),
+      onFrom: function (e) { if (e.target.value) self.setState({ pFrom: e.target.value }); },
+      onTo: function (e) { if (e.target.value) self.setState({ pTo: e.target.value }); },
+      barCo: 'width:' + pc(t.co) + '%;background:#7BCAAC', barBernice: 'width:' + pc(t.b) + '%;background:#C2571A', barBalon: 'width:' + pc(t.ba) + '%;background:#2457A6',
+      fund: { exp: fmt(expMonth), in: fmt(t.co), bal: rm(fundBal), style: 'font-family:IBM Plex Mono,monospace;color:' + (fundBal < 0 ? '#9B1C1C' : '#11603F') },
+      renewSum: { yCount: ys.n, yTotal: rm(ys.sum), over: ys.over, soon: ys.soon, alertN: alerts.length },
+      alerts: alerts,
+      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net - ownCost),
+      renewTot: { fee: fmt(ys.sum), cost: fmt(ys.cost), net: fmt(ys.net), co: fmt(ys.co), b: fmt(ys.b), ba: fmt(ys.ba) },
+      custCount: activeCust.length,
+      ncFields: ncFields, ncRows: ncRows, saveNew: saveNew, ncErr: s.ncErr, hasNcErr: !!s.ncErr, ncMsg: s.ncMsg, hasNcMsg: !!s.ncMsg,
+      addRenRow: function () { self.setState({ ncRen: self.state.ncRen.concat([{ item: '', fee: '', cost: '', due: '' }]) }); },
+      closeMsg: function () { self.setState({ ncMsg: '' }); },
+      goRenewFromMsg: function () { self.setState({ tab: 'renew', ncMsg: '' }); },
+      editing: editing, editFields: editFields, editTitle: editing ? custById[s.editId].name : '',
+      editRows: s.draftRen.map(function (r, k) {
+        var setF = function (f) { return function (e) { var rows = self.state.draftRen.map(function (x) { return Object.assign({}, x); }); rows[k][f] = e.target.value; self.setState({ draftRen: rows, editErr: '' }); }; };
+        return { n: k + 1, item: r.item, fee: r.fee, cost: r.cost, due: r.due, isNew: !r.id, onItem: setF('item'), onFee: setF('fee'), onCost: setF('cost'), onDue: setF('due'),
+          remove: function () { var st = self.state; self.setState({ draftRen: st.draftRen.filter(function (_, j) { return j !== k; }), draftRemoved: r.id ? st.draftRemoved.concat([r.id]) : st.draftRemoved }); } };
+      }),
+      addEditRow: function () { self.setState({ draftRen: self.state.draftRen.concat([{ id: null, item: '', fee: '', cost: '', due: '', remark: '' }]) }); },
+      editErr: s.editErr, hasEditErr: !!s.editErr, saveEdit: saveEdit, cancelEdit: function () { self.setState({ editId: null }); },
+      q: s.q, onQ: function (e) { self.setState({ q: e.target.value }); },
+      showNewCust: s.showNewCust, toggleNewCust: function () { self.setState({ showNewCust: !s.showNewCust }); },
+      customers: customers, srcBtns: srcBtns, saleStr: s.sale, costStr: s.cost,
+      onSale: function (e) { self.setState({ sale: e.target.value }); }, onCost: function (e) { self.setState({ cost: e.target.value }); },
+      calc: calc, projects: projects,
+      quotes: quotes, quoCount: quotes.length, quoEmpty: quotes.length === 0,
+      ed: ed, srcOpts: srcOpts, quoStatusOpts: ['草稿', '已发出', '已接受', '已转 Invoice'].map(function (v) { return { v: v }; }),
+      payDate: s.payDate, payAmt: s.payAmt !== '' ? s.payAmt : (owingNow > 0 ? String(r2(owingNow)) : ''),
+      onPayDate: function (e) { self.setState({ payDate: e.target.value }); }, onPayAmt: function (e) { self.setState({ payAmt: e.target.value }); },
+      addPay: function () {
+        var amt = num(self.state.payAmt !== '' ? self.state.payAmt : owingNow);
+        if (!(amt > 0)) { self.toast('请填收款金额'); return; }
+        if (!self.state.payDate) { self.toast('请填收款日期'); return; }
+        self.act(async function () { await dbInsert('payments', { document_id: E.id, pay_date: self.state.payDate, amount: r2(amt) }); self.setState({ payAmt: '' }); }, '已记录收款 RM ' + fmt(amt));
+      },
+      zipYears: zipYearsAll.map(function (y) { return { v: y }; }), zipYear: zipYear, zipMonths: zipMonths,
+      zipCount: yearInv.length, zipTotal: rm(yearInv.reduce(function (a, x) { return a + x.amount; }, 0)),
+      onZipYear: function (e) { self.setState({ zipYear: e.target.value }); },
+      zipBusy: !!s.zipBusy, zipBtnLabel: s.zipBusy ? '正在打包…' : '下载 ' + zipYear + ' 全年 Invoice（ZIP）',
+      zipBtnStyle: 'display:flex;align-items:center;gap:8px;padding:10px 16px;border:0;border-radius:6px;font:inherit;font-weight:600;cursor:pointer;color:#FFFFFF;background:' + (s.zipBusy ? '#6B7280' : '#16202A'),
+      dlYear: function () { if (!s.zipBusy) self.downloadYear(zipYear, yearInv.map(function (x) { return { no: x.no, month: x.month, amount: x.amount, doc: self.docPdf(x.d) }; })); },
+      custOpts: custOpts, custOptN: custOpts.length
+    });
+  }
+
+}
+
+  WB_BOOT(Component);
+})();
+</script>
+</body>
+</html>
