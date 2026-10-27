@@ -3054,7 +3054,8 @@ class Component extends DCLogic {
     DB.renewal_groups.filter(function (g) { return g.is_active; }).sort(function (a, b) { return a.id - b.id; }).forEach(function (g) {
       pushServerGroup(g, g.name, fmt(g.server_fee), activeRen.filter(function (r) { return r.group_id === g.id; }));
     });
-    pushServerGroup(null, 'No server', '', activeRen.filter(function (r) { return r.group_id == null; }));
+    var unassigned = activeRen.filter(function (r) { return r.group_id == null; });
+    if (unassigned.length) pushServerGroup(null, 'No server', '', unassigned);
     var srvAdd = { name: srvNew.name, fee: srvNew.fee, onName: function (e) { setSrvNew({ name: e.target.value }); }, onFee: function (e) { setSrvNew({ fee: e.target.value }); },
       add: function () { saveSrv(null, self.state.srvNew.name, self.state.srvNew.fee); } };
     var srvTotal = DB.renewal_groups.filter(function (g) { return g.is_active; }).reduce(function (a, g) { return a + (+g.server_fee || 0); }, 0);
