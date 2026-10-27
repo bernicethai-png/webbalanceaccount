@@ -3033,7 +3033,7 @@ class Component extends DCLogic {
         self.act(async function () { await dbUpdate('renewal_groups', g.id, { is_active: false }); self.setState({ srvEdit: null, srvErr: '' }); }, 'Server deleted');
       } : null;
       serverRows.push({ isHead: !editing, isEdit: editing, isItem: false, dragOver: allowDrop, dropOn: dropHere, canDelete: !!delEmpty, del: delEmpty,
-        title: name + ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + fee : ''), item: '', customer: '', due: '', amount: '', cost: '',
+        title: name + ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + fee : '') + ' · total fee ' + fmt(rs.reduce(function (a, r) { return a + (+r.fee || 0); }, 0)), item: '', customer: '', due: '', amount: '', cost: '',
         editName: editing ? srvEdit.name : '', editFee: editing ? srvEdit.fee : '',
         startEdit: g ? function () { self.setState({ srvEdit: { id: g.id, name: g.name, fee: String(g.server_fee) }, srvErr: '' }); } : null,
         onEditName: function (e) { setSrvEdit({ name: e.target.value }); },
