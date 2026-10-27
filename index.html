@@ -1308,15 +1308,11 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
         <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px">
           <div>
             <h1 style="margin: 0; font-size: 26px">Renewal summary</h1>
-            <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">All {{rtCount}} items at a glance · red = expired, orange = due within 30 days</p>
+            <p style="margin: 6px 0 0; color: #4B5563; font-size: 14px">Renewals grouped by server · {{rtCount}} items</p>
           </div>
           <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px">
             <span style="padding: 6px 12px; border-radius: 999px; background: #FADADA; color: #9B1C1C; font-weight: 600">{{renewSum.over}} Expired</span>
             <span style="padding: 6px 12px; border-radius: 999px; background: #FCEFC7; color: #7A5200; font-weight: 600">{{renewSum.soon}} due within 30 days</span>
-            <span style="color: #4B5563; margin-left: 6px">Sort</span>
-            <template data-sc="for" list="{{rtSortBtns}}" as="b" hint-placeholder-count="2">
-              <button type="button" onClick="{{b.pick}}" style="{{b.style}}">{{b.label}}</button>
-            </template>
           </div>
         </div>
 
@@ -1385,65 +1381,31 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
           </div>
         </section>
 
-        <section style="background: #FFFFFF; border: 1px solid #D1D5DB; border-radius: 8px; overflow: hidden">
-          <div style="overflow-x: auto">
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+          <h2 style="margin: 0; font-size: 17px">Renewal totals</h2>
+          <div style="overflow-x: auto; margin-top: 12px">
             <table style="font-size: 13px">
               <thead>
                 <tr style="background: #F5C451">
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Due date</th>
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; min-width: 190px">Days left</th>
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Customer</th>
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Item / website</th>
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Server</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px"></th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Fee (Debit)</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Cost (Credit)</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Net profit</th>
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px"></th>
                 </tr>
               </thead>
               <tbody>
-                <template data-sc="for" list="{{rtRows}}" as="r" hint-placeholder-count="24">
-                  <tr style="{{r.rowStyle}}">
-                    <td style="padding: 6px 10px; font-family: 'IBM Plex Mono',monospace">{{r.due}}</td>
-                    <td style="padding: 6px 10px">
-                      <div style="display: flex; align-items: center; gap: 0">
-                        <div style="width: 48px; display: flex; justify-content: flex-end"><div style="{{r.negBar}}"></div></div>
-                        <div style="width: 1px; height: 18px; background: #6B7280"></div>
-                        <div style="width: 96px; display: flex"><div style="{{r.posBar}}"></div></div>
-                        <span style="{{r.daysStyle}}">{{r.daysTxt}}</span>
-                      </div>
-                    </td>
-                    <td style="padding: 6px 10px; font-weight: 600; white-space: normal; min-width: 150px">
-                      <template data-sc="if" value="{{r.hasLink}}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{r.openCust}}" style="padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left">{{r.customer}}</button></template>
-                      <template data-sc="if" value="{{r.noLink}}" hint-placeholder-val="{{ false }}">{{r.customer}}</template>
-                    </td>
-                    <td style="padding: 6px 10px; white-space: normal; min-width: 200px">{{r.item}}</td>
-                    <td style="padding: 6px 10px">
-                      <template data-sc="if" value="{{r.hasGroup}}" hint-placeholder-val="{{ true }}">
-                        <select value="{{r.groupId}}" onChange="{{r.onGroup}}" style="padding: 4px 6px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 12px">
-                          <template data-sc="for" list="{{serverOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.label}}</option></template>
-                        </select>
-                      </template>
-                    </td>
-                    <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{r.fee}}</td>
-                    <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{r.cost}}</td>
-                    <td style="{{r.netStyle}}">{{r.net}}</td>
-                  </tr>
-                </template>
-                <tr style="background: #F7F8FA; border-top: 2px solid #16202A">
-                  <td colspan="4" style="padding: 8px 10px; font-weight: 700">SubTotal (customer renewals)</td>
+                <tr style="background: #F7F8FA">
+                  <td style="padding: 8px 10px; font-weight: 700">SubTotal (customer renewals)</td>
                   <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700">{{renewTot.fee}}</td>
                   <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700">{{renewTot.cost}}</td>
                   <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700">{{renewTot.net}}</td>
-                  <td></td>
                 </tr>
                 <tr style="background: #F7F8FA">
-                  <td colspan="8" style="padding: 8px 10px; font-size: 12px; color: #4B5563">Company {{renewTot.co}} · Bernice {{renewTot.b}} · Balon {{renewTot.ba}}</td>
+                  <td colspan="4" style="padding: 8px 10px; font-size: 12px; color: #4B5563">Company {{renewTot.co}} · Bernice {{renewTot.b}} · Balon {{renewTot.ba}}</td>
                 </tr>
                 <tr style="background: #EEF8F4">
-                  <td colspan="6" style="padding: 10px; font-weight: 700">Net Profit (full year)</td>
+                  <td colspan="3" style="padding: 10px; font-weight: 700">Net Profit (full year)</td>
                   <td style="padding: 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700; color: #155A48">{{rtNet}}</td>
-                  <td></td>
                 </tr>
               </tbody>
             </table>
