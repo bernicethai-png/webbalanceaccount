@@ -3057,6 +3057,7 @@ class Component extends DCLogic {
     pushServerGroup(null, 'No server', '', activeRen.filter(function (r) { return r.group_id == null; }));
     var srvAdd = { name: srvNew.name, fee: srvNew.fee, onName: function (e) { setSrvNew({ name: e.target.value }); }, onFee: function (e) { setSrvNew({ fee: e.target.value }); },
       add: function () { saveSrv(null, self.state.srvNew.name, self.state.srvNew.fee); } };
+    var srvTotal = DB.renewal_groups.filter(function (g) { return g.is_active; }).reduce(function (a, g) { return a + (+g.server_fee || 0); }, 0);
     var asgRaw = s.srvAsg || { id: '', group: '' };
     var setSrvAsg = function (patch) { self.setState({ srvAsg: Object.assign({}, self.state.srvAsg, patch) }); };
     var domainOpts = [{ v: '', label: '— Select domain' }].concat(activeRen.filter(function (r) { return r.group_id == null; }).map(function (r) { return { v: String(r.id), label: r.item + ' · ' + cname(r.customer_id) }; }));
@@ -3265,8 +3266,8 @@ class Component extends DCLogic {
       fund: { exp: fmt(expMonth), in: fmt(t.co), bal: rm(fundBal), style: 'font-family:IBM Plex Mono,monospace;color:' + (fundBal < 0 ? '#9B1C1C' : '#11603F') },
       renewSum: { yCount: ys.n, yTotal: rm(ys.sum), over: ys.over, soon: ys.soon, alertN: alerts.length },
       alerts: alerts, alertsFirst: alerts.slice(0, 9), alertsMore: alerts.slice(9), hasAlertsMore: alerts.length > 9, alertsMoreLabel: 'Show ' + (alerts.length - 9) + ' more',
-      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverRows: serverRows, serverOpts: serverOpts, srvAdd: srvAdd, asg: asgView, domainOpts: domainOpts, srvErr: s.srvErr || '', srvHasErr: !!s.srvErr, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net), serverFeeTotal: fmt(DB.renewal_groups.filter(function (g) { return g.is_active; }).reduce(function (a, g) { return a + (+g.server_fee || 0); }, 0)), serverFeeCount: DB.renewal_groups.filter(function (g) { return g.is_active; }).length,
-      renewTot: { fee: fmt(ys.sum), cost: fmt(ys.cost), net: fmt(ys.net), co: fmt(ys.co), b: fmt(ys.b), ba: fmt(ys.ba) },
+      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverRows: serverRows, serverOpts: serverOpts, srvAdd: srvAdd, asg: asgView, domainOpts: domainOpts, srvErr: s.srvErr || '', srvHasErr: !!s.srvErr, rtOwnCost: fmt(ownCost), rtNet: rm(ys.sum - ys.cost - srvTotal), serverFeeTotal: fmt(DB.renewal_groups.filter(function (g) { return g.is_active; }).reduce(function (a, g) { return a + (+g.server_fee || 0); }, 0)), serverFeeCount: DB.renewal_groups.filter(function (g) { return g.is_active; }).length,
+      renewTot: { fee: fmt(ys.sum), cost: fmt(ys.cost), net: fmt(ys.sum - ys.cost - srvTotal), co: fmt(ys.co), b: fmt(ys.b), ba: fmt(ys.ba) },
       custCount: activeCust.length,
       ncFields: ncFields, ncRows: ncRows, saveNew: saveNew, ncErr: s.ncErr, hasNcErr: !!s.ncErr, ncMsg: s.ncMsg, hasNcMsg: !!s.ncMsg,
       addRenRow: function () { self.setState({ ncRen: self.state.ncRen.concat([{ item: '', fee: '', cost: '', due: '', remark: '', type: 'yearly' }]) }); },
