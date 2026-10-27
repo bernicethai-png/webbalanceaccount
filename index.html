@@ -1320,6 +1320,31 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
           </div>
         </div>
 
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+          <h2 style="margin: 0; font-size: 17px">Servers</h2>
+          <p style="margin: 6px 0 0; color: #4B5563; font-size: 13px">Domains grouped by the server they run on · change a domain's server in the Server column below</p>
+          <div style="overflow-x: auto; margin-top: 12px">
+            <table style="font-size: 13px">
+              <thead>
+                <tr style="background: #F5C451">
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Server</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Server fee</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Domains</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template data-sc="for" list="{{serverList}}" as="s" hint-placeholder-count="7">
+                  <tr>
+                    <td style="padding: 6px 10px; font-weight: 600">{{s.name}}</td>
+                    <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.fee}}</td>
+                    <td style="padding: 6px 10px; white-space: normal">{{s.items}}</td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <section style="background: #FFFFFF; border: 1px solid #D1D5DB; border-radius: 8px; overflow: hidden">
           <div style="overflow-x: auto">
             <table style="font-size: 13px">
@@ -1329,6 +1354,7 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; min-width: 190px">Days left</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Customer</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Item / website</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Server</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Fee (Debit)</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Cost (Credit)</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Net profit</th>
@@ -1352,6 +1378,13 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                       <template data-sc="if" value="{{r.noLink}}" hint-placeholder-val="{{ false }}">{{r.customer}}</template>
                     </td>
                     <td style="padding: 6px 10px; white-space: normal; min-width: 200px">{{r.item}}</td>
+                    <td style="padding: 6px 10px">
+                      <template data-sc="if" value="{{r.hasGroup}}" hint-placeholder-val="{{ true }}">
+                        <select value="{{r.groupId}}" onChange="{{r.onGroup}}" style="padding: 4px 6px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 12px">
+                          <template data-sc="for" list="{{serverOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.label}}</option></template>
+                        </select>
+                      </template>
+                    </td>
                     <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{r.fee}}</td>
                     <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{r.cost}}</td>
                     <td style="{{r.netStyle}}">{{r.net}}</td>
@@ -1634,8 +1667,8 @@ function effSrc(src, dateIso) {
 
 // ---------- Supabase ----------
 var SB = null;
-var DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [], staff: [], payslips: [] };
-var TABLE = { customers: 'customers', renewals: 'renewals', docs: 'documents', payments: 'payments', expenses: 'expenses', staff: 'staff', payslips: 'payslips' };
+var DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [], staff: [], payslips: [], renewal_groups: [] };
+var TABLE = { customers: 'customers', renewals: 'renewals', docs: 'documents', payments: 'payments', expenses: 'expenses', staff: 'staff', payslips: 'payslips', renewal_groups: 'renewal_groups' };
 // stored status values stay as they are in the data; this is only what the screen shows
 var STATUS_EN = { '草稿': 'Draft', '已发出': 'Sent', '已接受': 'Accepted', '已转 Invoice': 'Converted to invoice', '未付款': 'Unpaid', 'Expired': 'Expired' };
 function stEn(x) { return STATUS_EN[x] || x; }
@@ -1816,7 +1849,7 @@ class Component extends DCLogic {
     SB = window.supabase.createClient(WB_CONFIG.url, WB_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     SB.auth.onAuthStateChange(function (event, session) {
       if (event === 'PASSWORD_RECOVERY') { self.setState({ gate: 'recovery', lg: Object.assign({}, self.state.lg, { err: '', msg: '' }) }); return; }
-      if (event === 'SIGNED_OUT') { DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [], staff: [], payslips: [] }; self.setState({ gate: 'out', userEmail: '' }); return; }
+      if (event === 'SIGNED_OUT') { DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [], staff: [], payslips: [], renewal_groups: [] }; self.setState({ gate: 'out', userEmail: '' }); return; }
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session && self.state.gate !== 'recovery' && self.state.gate !== 'in' && self.state.gate !== 'loadingData') {
         setTimeout(function () { self.afterLogin(session); }, 0);
       }
@@ -2921,7 +2954,7 @@ class Component extends DCLogic {
       if (days < 0) { b = 'Expired ' + (-days) + ' days'; st = BAD; ys.over++; }
       else if (days <= 30) { b = days + ' days left'; st = WARN; ys.soon++; }
       else { b = 'Normal'; st = MUTED; }
-      return { r: r, gi: r.id, isDone: false, isNotDone: true, customer: cname(r.customer_id), custId: r.customer_id, item: r.item, remark: r.remark, days: days, due: dmy(parseD(r.due_date)),
+      return { r: r, gi: r.id, isDone: false, isNotDone: true, customer: cname(r.customer_id), custId: r.customer_id, item: r.item, hasGroup: true, groupId: r.group_id != null ? String(r.group_id) : '', onGroup: function (e) { self.act(async function () { await dbUpdate('renewals', r.id, { group_id: e.target.value ? +e.target.value : null }); }, 'Server updated'); }, remark: r.remark, days: days, due: dmy(parseD(r.due_date)),
         fee: fmt(r.fee), cost: fmt(r.cost || 0), net: fmt(n), co: fmt(x.co), bernice: fmt(x.b), balon: fmt(x.ba), badge: b, badgeStyle: st,
         canRenew: true, urgent: days <= 30, renew: function () { self.renewItem(r, false); }, openRenewal: function () { self.setState({ tab: 'cust', custDetail: r.customer_id }); } };
     }).sort(function (a, b) { return a.days - b.days; });
@@ -2938,6 +2971,11 @@ class Component extends DCLogic {
     var firstIdx = {};
     renewals.forEach(function (r) { if (firstIdx[r.custId] == null || r.gi < firstIdx[r.custId]) firstIdx[r.custId] = r.gi; });
     var custRows = renewals.slice().sort(rtSort === 'cust' ? function (a, b) { return firstIdx[a.custId] - firstIdx[b.custId] || a.gi - b.gi; } : function (a, b) { return a.days - b.days; });
+    var serverList = DB.renewal_groups.filter(function (g) { return g.is_active; }).sort(function (a, b) { return a.id - b.id; }).map(function (g) {
+      var names = DB.renewals.filter(function (r) { return r.is_active && !r.is_own && r.group_id === g.id; }).map(function (r) { return r.item; });
+      return { name: g.name, fee: fmt(g.server_fee), count: names.length, items: names.length ? names.join(' · ') : '—' };
+    });
+    var serverOpts = [{ v: '', label: '— No server' }].concat(DB.renewal_groups.filter(function (g) { return g.is_active; }).map(function (g) { return { v: String(g.id), label: g.name }; }));
     var rtRows = custRows.map(function (r, k) {
       var prev = custRows[k - 1], newGroup = rtSort === 'cust' && k > 0 && prev.custId !== r.custId;
       var bg = r.days < 0 ? '#FFF5F5' : (r.days <= 30 ? '#FFFAF0' : '#FFFFFF');
@@ -2951,7 +2989,7 @@ class Component extends DCLogic {
     ownList.forEach(function (o, k) {
       var days = Math.round((parseD(o.due_date) - today) / 86400000);
       ownCost += o.cost || 0;
-      rtRows.push(Object.assign({ due: dmy(parseD(o.due_date)), daysTxt: String(days), customer: k === 0 ? 'Webbalances (company use)' : '', item: o.item, fee: '—', cost: o.cost == null ? '[to fill]' : fmt(o.cost), net: '—',
+      rtRows.push(Object.assign({ hasGroup: false, due: dmy(parseD(o.due_date)), daysTxt: String(days), customer: k === 0 ? 'Webbalances (company use)' : '', item: o.item, fee: '—', cost: o.cost == null ? '[to fill]' : fmt(o.cost), net: '—',
         canRenew: true, isDone: false, hasLink: false, noLink: true, renew: function () { self.renewItem(o, true); },
         rowStyle: 'background:#F7F8FA;' + (k === 0 ? 'border-top:8px solid #F2F5F4' : ''), netStyle: 'padding:6px 10px;text-align:right;color:#9CA3AF' }, bar(days)));
     });
@@ -3134,7 +3172,7 @@ class Component extends DCLogic {
       fund: { exp: fmt(expMonth), in: fmt(t.co), bal: rm(fundBal), style: 'font-family:IBM Plex Mono,monospace;color:' + (fundBal < 0 ? '#9B1C1C' : '#11603F') },
       renewSum: { yCount: ys.n, yTotal: rm(ys.sum), over: ys.over, soon: ys.soon, alertN: alerts.length },
       alerts: alerts, alertsFirst: alerts.slice(0, 9), alertsMore: alerts.slice(9), hasAlertsMore: alerts.length > 9, alertsMoreLabel: 'Show ' + (alerts.length - 9) + ' more',
-      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net - ownCost),
+      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverList: serverList, serverOpts: serverOpts, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net - ownCost),
       renewTot: { fee: fmt(ys.sum), cost: fmt(ys.cost), net: fmt(ys.net), co: fmt(ys.co), b: fmt(ys.b), ba: fmt(ys.ba) },
       custCount: activeCust.length,
       ncFields: ncFields, ncRows: ncRows, saveNew: saveNew, ncErr: s.ncErr, hasNcErr: !!s.ncErr, ncMsg: s.ncMsg, hasNcMsg: !!s.ncMsg,
