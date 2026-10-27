@@ -1424,9 +1424,6 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                   <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700">{{serverFeeTotal}}</td>
                   <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700">{{renewTot.net}}</td>
                 </tr>
-                <tr style="background: #F7F8FA">
-                  <td colspan="5" style="padding: 8px 10px; font-size: 12px; color: #4B5563">Company {{renewTot.co}} · Bernice {{renewTot.b}} · Balon {{renewTot.ba}}</td>
-                </tr>
                 <tr style="background: #EEF8F4">
                   <td colspan="4" style="padding: 10px; font-weight: 700">Net Profit (full year)</td>
                   <td style="padding: 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700; color: #155A48">{{rtNet}}</td>
@@ -2652,12 +2649,44 @@ class Component extends DCLogic {
           ba: isOld ? 'year-end by balance 60%' : (isB0 ? fmt(n * 0.5) + ' × 55%' : (no10 ? fmt(n) + ' × 55%' : (isB ? fmt(n * 0.45) + ' × 55%' : fmt(n * 0.9) + ' × 55%')))
         } };
     }).sort(function (a, b) { return a.iso < b.iso ? 1 : (a.iso > b.iso ? -1 : (a.inv < b.inv ? 1 : -1)); });
+
+    // ---------- 收款口径：分红 / Projects / Overview 月度统一用这个（每笔收款一行，按收款日期归属年月）----------
+    var howOf = function (es, n) {
+      var isB = es === 'B', isB0 = es === 'B0', isOld = es === 'OLD', no10 = es === 'C0' || es === 'L0';
+      return {
+        co: isOld ? 'year-end by balance 40/60' : (isB0 || no10 ? '2025: no 10% deduction' : (isB ? 'Plus 50% (' + fmt(n * 0.5) + ') × 10%' : 'Net profit ' + fmt(n) + ' × 10%')),
+        b: isOld ? 'year-end by balance 40%' : (isB0 ? 'first 50% = ' + fmt(n * 0.5) + ', then ' + fmt(n * 0.5) + ' × 45%' : (no10 ? fmt(n) + ' × 45%' : (isB ? 'first 50% = ' + fmt(n * 0.5) + ', then ' + fmt(n * 0.45) + ' × 45% = ' + fmt(n * 0.2025) : fmt(n * 0.9) + ' × 45%'))),
+        ba: isOld ? 'year-end by balance 60%' : (isB0 ? fmt(n * 0.5) + ' × 55%' : (no10 ? fmt(n) + ' × 55%' : (isB ? fmt(n * 0.45) + ' × 55%' : fmt(n * 0.9) + ' × 55%')))
+      };
+    };
+    var grpById = {}, grpCount = {}, renById = {};
+    DB.renewal_groups.forEach(function (g) { grpById[g.id] = g; });
+    DB.renewals.forEach(function (r) { renById[r.id] = r; if (r.is_active && !r.is_own && r.group_id != null) grpCount[r.group_id] = (grpCount[r.group_id] || 0) + 1; });
+    // 续费域名分摊到的服务器费用 = 服务器费用 ÷ 该组域名数
+    var serverShareOf = function (renewalId) {
+      var r = renewalId == null ? null : renById[renewalId], g = (r && r.group_id != null) ? grpById[r.group_id] : null;
+      if (!r || !r.is_active || !g || !g.is_active || !grpCount[g.id]) return 0;
+      return (+g.server_fee || 0) / grpCount[g.id];
+    };
+    var ledgerRows = [];
+    allRows.forEach(function (r) {
+      if (r.unmarked || !(r.doc.total > 0)) return;
+      var d = r.doc, share = serverShareOf(d.renewal_id), full = d.total - d.cost - share;
+      (paysBy[d.id] || []).forEach(function (p) {
+        var k = Math.min(p.amount / d.total, 1), n = full * k, x = split(n, r.es), sale = d.total * k, cost = d.cost * k;
+        ledgerRows.push({ doc: d, id: r.id, title: r.title, customer: r.customer, custId: r.custId, src: r.src, srcStyle: r.srcStyle, es: r.es,
+          iso: p.pay_date || d.doc_date, date: dmy(parseD(p.pay_date || d.doc_date)), inv: r.inv, open: r.open, pay: r.pay, payStyle: r.payStyle,
+          sale: fmt(sale), cost: fmt(cost), net: fmt(n), co: fmt(x.co), bernice: fmt(x.b), balon: fmt(x.ba), paid: fmt(sale), owing: fmt(0),
+          raw: { sale: sale, cost: cost, net: n, paid: sale }, v: { co: x.co, b: x.b, ba: x.ba }, how: howOf(r.es, n) });
+      });
+    });
+    ledgerRows.sort(function (a, b) { return a.iso < b.iso ? 1 : (a.iso > b.iso ? -1 : 0); });
     var sumOf = function (rows) {
       var a = { sale: 0, cost: 0, net: 0, co: 0, b: 0, ba: 0, paid: 0, owing: 0 };
       rows.forEach(function (r) { var k = r.raw; a.sale += k.sale; a.cost += k.cost; a.net += k.net; a.co += r.v.co; a.b += r.v.b; a.ba += r.v.ba; a.paid += k.paid; a.owing += Math.max(k.sale - k.paid, 0); });
       return a;
     };
-    var projects = allRows.filter(function (r) { return !r.unmarked && r.iso >= monthStart && r.iso <= monthEnd; });
+    var projects = ledgerRows.filter(function (r) { return r.iso >= monthStart && r.iso <= monthEnd; });
     var t = sumOf(projects);
     var allOwing = sumOf(allRows).owing, owingN = allRows.filter(function (r) { return r.raw.sale - r.raw.paid > 0.005; }).length;
     var unpaidRows = allRows.filter(function (r) { return r.raw.sale - r.raw.paid > 0.005; });
@@ -2669,10 +2698,10 @@ class Component extends DCLogic {
     var unpaidCount = unpaidRows.length, unpaidEmpty = unpaidCount === 0;
 
     // Project页
-    var pYearsAll = yearList.filter(function (y) { return allRows.some(function (r) { return +r.iso.slice(0, 4) === y; }); }).sort(function (a, b) { return b - a; });
+    var pYearsAll = yearList.filter(function (y) { return ledgerRows.some(function (r) { return +r.iso.slice(0, 4) === y; }); }).sort(function (a, b) { return b - a; });
     var pYear = (s.pYear && pYearsAll.indexOf(+s.pYear) >= 0) ? +s.pYear : Y;
     var pFrom = pYear + '-01-01', pTo = pYear + '-12-31';
-    var plist = allRows.filter(function (r) { return !r.unmarked && r.iso >= pFrom && r.iso <= pTo && (r.es === 'B' || r.es === 'L' || r.es === 'R'); });
+    var plist = ledgerRows.filter(function (r) { return r.iso >= pFrom && r.iso <= pTo; });
     var pt = sumOf(plist);
     var pYears = pYearsAll.map(function (y) { return { v: String(y), label: String(y) + ' ' }; });
     var kbox = function (bd, bg) { return 'background:' + bg + ';border:1px solid ' + bd + ';border-radius:10px;padding:14px 16px'; };
@@ -2698,11 +2727,9 @@ class Component extends DCLogic {
         markPaid: function () { self.act(async function () { await dbUpdate('expenses', x.id, { pending_claim: false }); }, 'Marked as paid'); } };
     });
     var expMonth = expenses.filter(function (x) { return x.date >= monthStart && x.date <= monthEnd && x.cat !== 'Salary' && x.cat !== 'Dividend paid'; }).reduce(function (a, x) { return a + x.amount; }, 0);
-    var partner = t.b + t.ba, fromP = Math.min(SALARY, Math.max(partner, 0)), fromCo = SALARY - fromP;
-    var bDed = partner > 0 ? fromP * t.b / partner : 0, baDed = fromP - bDed;
-    var sal = { bDed: fmt(bDed), baDed: fmt(baDed), fromCo: fmt(fromCo), bFinal: rm(t.b - bDed), baFinal: rm(t.ba - baDed),
-      bTake: rm(t.b - bDed + SALARY), coFinal: rm(t.co - fromCo - expMonth), note: fromCo > 0 ? 'This month’s split is not enough for salary, shortfall RM ' + fmt(fromCo) + ' deducted from company retained' : 'This month’s split covers salary; company retained is untouched' };
-    var fundBal = t.co - fromCo - expMonth;
+    var sal = { bDed: fmt(0), baDed: fmt(0), fromCo: fmt(SALARY), bFinal: rm(t.b), baFinal: rm(t.ba),
+      bTake: rm(t.b + SALARY), coFinal: rm(t.co - SALARY - expMonth), note: 'Bernice salary RM ' + fmt(SALARY) + ' is paid from company retained and does not affect dividends' };
+    var fundBal = t.co - SALARY - expMonth;
 
     var CATS = ['Gifts', 'Travel / events', 'Hosting / domain / theme', 'Software / subscriptions', 'Equipment / repairs', 'Accounting / bank / registration', 'Outsourcing / design', 'Commission', 'Salary', 'Bonus', 'Dividend paid', 'Other'];
     var CAT_STYLE = { 'Gifts': badge('#F6E3EE', '#8B1D5C'), 'Travel / events': badge('#FCEFC7', '#7A5200'), 'Hosting / domain / theme': badge('#DCE6F7', '#1D4485'), 'Software / subscriptions': badge('#DDF2EA', '#155A48'), 'Equipment / repairs': badge('#EDE7F6', '#4C2C92'), 'Salary': badge('#FBE7DA', '#8A3B0E'), 'Dividend paid': badge('#FBE7DA', '#8A3B0E'), 'Bonus': badge('#FADADA', '#9B1C1C') };
@@ -2946,10 +2973,10 @@ class Component extends DCLogic {
 
     // ---------- Dividends ----------
     var who = s.divWho, WHO = { all: 'All', co: 'Company retained', b: 'Bernice', ba: 'Balon' };
-    var divYearsAll = yearList.filter(function (y) { return allRows.some(function (r) { return +r.iso.slice(0, 4) === y; }); }).sort(function (a, b) { return b - a; });
+    var divYearsAll = yearList.filter(function (y) { return ledgerRows.some(function (r) { return +r.iso.slice(0, 4) === y; }); }).sort(function (a, b) { return b - a; });
     var divYear = (s.divYear && divYearsAll.indexOf(+s.divYear) >= 0) ? +s.divYear : Y;
     var divYearOpts = divYearsAll.map(function (y) { return { v: String(y), label: String(y) + ' ' }; });
-    var divYearRows = allRows.filter(function (r) { return !r.unmarked && +r.iso.slice(0, 4) === divYear; });
+    var divYearRows = ledgerRows.filter(function (r) { return +r.iso.slice(0, 4) === divYear; });
     var divAllProjects = divYearRows.map(function (p) {
       return { date: p.date, inv: p.inv, open: p.open, title: p.title, customer: p.customer, src: p.src, srcStyle: p.srcStyle, net: p.net, co: fmt(p.v.co), bernice: fmt(p.v.b), balon: fmt(p.v.ba) };
     });
