@@ -1327,18 +1327,29 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
             <table style="font-size: 13px">
               <thead>
                 <tr style="background: #F5C451">
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Server</th>
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Server fee</th>
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Domains</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Due date</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Customer</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Item / website</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Fee (Debit)</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Cost (Credit)</th>
                 </tr>
               </thead>
               <tbody>
-                <template data-sc="for" list="{{serverList}}" as="s" hint-placeholder-count="7">
-                  <tr>
-                    <td style="padding: 6px 10px; font-weight: 600">{{s.name}}</td>
-                    <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.fee}}</td>
-                    <td style="padding: 6px 10px; white-space: normal">{{s.items}}</td>
-                  </tr>
+                <template data-sc="for" list="{{serverRows}}" as="s" hint-placeholder-count="12">
+                  <template data-sc="if" value="{{s.isHead}}" hint-placeholder-val="{{ false }}">
+                    <tr style="background: #F7F8FA">
+                      <td colspan="5" style="padding: 10px; font-weight: 600; border-top: 8px solid #F2F5F4">{{s.title}}</td>
+                    </tr>
+                  </template>
+                  <template data-sc="if" value="{{s.isItem}}" hint-placeholder-val="{{ false }}">
+                    <tr>
+                      <td style="padding: 6px 10px; font-family: 'IBM Plex Mono',monospace">{{s.due}}</td>
+                      <td style="padding: 6px 10px">{{s.customer}}</td>
+                      <td style="padding: 6px 10px; white-space: normal">{{s.item}}</td>
+                      <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.amount}}</td>
+                      <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.cost}}</td>
+                    </tr>
+                  </template>
                 </template>
               </tbody>
             </table>
@@ -2971,10 +2982,16 @@ class Component extends DCLogic {
     var firstIdx = {};
     renewals.forEach(function (r) { if (firstIdx[r.custId] == null || r.gi < firstIdx[r.custId]) firstIdx[r.custId] = r.gi; });
     var custRows = renewals.slice().sort(rtSort === 'cust' ? function (a, b) { return firstIdx[a.custId] - firstIdx[b.custId] || a.gi - b.gi; } : function (a, b) { return a.days - b.days; });
-    var serverList = DB.renewal_groups.filter(function (g) { return g.is_active; }).sort(function (a, b) { return a.id - b.id; }).map(function (g) {
-      var names = DB.renewals.filter(function (r) { return r.is_active && !r.is_own && r.group_id === g.id; }).map(function (r) { return r.item; });
-      return { name: g.name, fee: fmt(g.server_fee), count: names.length, items: names.length ? names.join(' · ') : '—' };
+    var serverRows = [];
+    var pushServerGroup = function (name, fee, rs) {
+      serverRows.push({ isHead: true, isItem: false, title: name + ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + fee : ''), item: '', customer: '', due: '', amount: '', cost: '' });
+      rs.forEach(function (r) { serverRows.push({ isHead: false, isItem: true, title: '', item: r.item, customer: cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0) }); });
+    };
+    var activeRen = DB.renewals.filter(function (r) { return r.is_active && !r.is_own; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
+    DB.renewal_groups.filter(function (g) { return g.is_active; }).sort(function (a, b) { return a.id - b.id; }).forEach(function (g) {
+      pushServerGroup(g.name, fmt(g.server_fee), activeRen.filter(function (r) { return r.group_id === g.id; }));
     });
+    pushServerGroup('No server', '', activeRen.filter(function (r) { return r.group_id == null; }));
     var serverOpts = [{ v: '', label: '— No server' }].concat(DB.renewal_groups.filter(function (g) { return g.is_active; }).map(function (g) { return { v: String(g.id), label: g.name }; }));
     var rtRows = custRows.map(function (r, k) {
       var prev = custRows[k - 1], newGroup = rtSort === 'cust' && k > 0 && prev.custId !== r.custId;
@@ -3172,7 +3189,7 @@ class Component extends DCLogic {
       fund: { exp: fmt(expMonth), in: fmt(t.co), bal: rm(fundBal), style: 'font-family:IBM Plex Mono,monospace;color:' + (fundBal < 0 ? '#9B1C1C' : '#11603F') },
       renewSum: { yCount: ys.n, yTotal: rm(ys.sum), over: ys.over, soon: ys.soon, alertN: alerts.length },
       alerts: alerts, alertsFirst: alerts.slice(0, 9), alertsMore: alerts.slice(9), hasAlertsMore: alerts.length > 9, alertsMoreLabel: 'Show ' + (alerts.length - 9) + ' more',
-      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverList: serverList, serverOpts: serverOpts, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net - ownCost),
+      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverRows: serverRows, serverOpts: serverOpts, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net - ownCost),
       renewTot: { fee: fmt(ys.sum), cost: fmt(ys.cost), net: fmt(ys.net), co: fmt(ys.co), b: fmt(ys.b), ba: fmt(ys.ba) },
       custCount: activeCust.length,
       ncFields: ncFields, ncRows: ncRows, saveNew: saveNew, ncErr: s.ncErr, hasNcErr: !!s.ncErr, ncMsg: s.ncMsg, hasNcMsg: !!s.ncMsg,
