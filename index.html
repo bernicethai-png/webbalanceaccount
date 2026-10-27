@@ -389,9 +389,6 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                     <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Domain Fee (MYR)
                       <input type="number" value="{{r.cost}}" onChange="{{r.onCost}}" placeholder="70" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono',monospace">
                     </label>
-                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Server Fee (MYR)
-                      <input type="number" value="{{r.server_fee}}" onChange="{{r.onServerFee}}" placeholder="0" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono',monospace">
-                    </label>
                     <template data-sc="if" value="{{r.showDue}}" hint-placeholder-val="{{ false }}">
                       <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Due date
                         <input type="date" value="{{r.due}}" onChange="{{r.onDue}}" style="padding: 9px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF">
