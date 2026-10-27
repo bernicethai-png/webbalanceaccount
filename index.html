@@ -3031,7 +3031,7 @@ class Component extends DCLogic {
       add: function () { saveSrv(null, self.state.srvNew.name, self.state.srvNew.fee); } };
     var asgRaw = s.srvAsg || { id: '', group: '' };
     var setSrvAsg = function (patch) { self.setState({ srvAsg: Object.assign({}, self.state.srvAsg, patch) }); };
-    var domainOpts = [{ v: '', label: '— Select domain' }].concat(activeRen.map(function (r) { return { v: String(r.id), label: r.item + ' · ' + cname(r.customer_id) }; }));
+    var domainOpts = [{ v: '', label: '— Select domain' }].concat(activeRen.filter(function (r) { return r.group_id == null; }).map(function (r) { return { v: String(r.id), label: r.item + ' · ' + cname(r.customer_id) }; }));
     var asgView = { id: asgRaw.id, group: asgRaw.group,
       onId: function (e) { setSrvAsg({ id: e.target.value }); },
       onGroup: function (e) { setSrvAsg({ group: e.target.value }); },
