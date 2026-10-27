@@ -1338,25 +1338,22 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Due date</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Customer</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Item / website</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Server</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Fee (Debit)</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Cost (Credit)</th>
+                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px"></th>
                 </tr>
               </thead>
               <tbody>
                 <template data-sc="for" list="{{serverRows}}" as="s" hint-placeholder-count="12">
                   <template data-sc="if" value="{{s.isHead}}" hint-placeholder-val="{{ false }}">
                     <tr style="background: #F7F8FA" onDblclick="{{s.startEdit}}">
-                      <td colspan="4" style="padding: 10px; font-weight: 600; border-top: 8px solid #F2F5F4">{{s.title}}</td>
-                      <td style="padding: 10px; border-top: 8px solid #F2F5F4; text-align: right">
-                        <template data-sc="if" value="{{s.canDelete}}" hint-placeholder-val="{{ false }}">
-                          <button type="button" onClick="{{s.del}}" style="padding: 4px 10px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">Delete</button>
-                        </template>
-                      </td>
+                      <td colspan="7" style="padding: 10px; font-weight: 600; border-top: 8px solid #F2F5F4">{{s.title}}</td>
                     </tr>
                   </template>
                   <template data-sc="if" value="{{s.isEdit}}" hint-placeholder-val="{{ false }}">
                     <tr style="background: #FFFBEA">
-                      <td colspan="5" style="padding: 10px; border-top: 8px solid #F2F5F4">
+                      <td colspan="7" style="padding: 10px; border-top: 8px solid #F2F5F4">
                         <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: end">
                           <input value="{{s.editName}}" onChange="{{s.onEditName}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; min-width: 220px">
                           <input type="number" value="{{s.editFee}}" onChange="{{s.onEditFee}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 140px; font-family: 'IBM Plex Mono',monospace">
@@ -1371,8 +1368,16 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                       <td style="padding: 6px 10px; font-family: 'IBM Plex Mono',monospace">{{s.due}}</td>
                       <td style="padding: 6px 10px">{{s.customer}}</td>
                       <td style="padding: 6px 10px; white-space: normal">{{s.item}}</td>
+                      <td style="padding: 6px 10px">
+                        <select value="{{s.groupId}}" onChange="{{s.onGroup}}" style="padding: 4px 6px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 12px">
+                          <template data-sc="for" list="{{serverOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.label}}</option></template>
+                        </select>
+                      </td>
                       <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.amount}}</td>
                       <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.cost}}</td>
+                      <td style="padding: 6px 10px; text-align: right">
+                        <button type="button" onClick="{{s.del}}" style="padding: 4px 10px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">Delete</button>
+                      </td>
                     </tr>
                   </template>
                 </template>
@@ -2982,27 +2987,23 @@ class Component extends DCLogic {
         self.setState({ srvEdit: null, srvNew: { name: '', fee: '' }, srvErr: '' });
       }, id ? 'Server updated' : 'Server added');
     };
-    var deleteSrv = function (g, rs) {
-      if (!confirm('Delete server "' + g.name + '"? Its domains will move to "No server".')) return;
-      self.act(async function () {
-        for (var i = 0; i < rs.length; i++) await dbUpdate('renewals', rs[i].id, { group_id: null });
-        await dbUpdate('renewal_groups', g.id, { is_active: false });
-        self.setState({ srvEdit: null, srvErr: '' });
-      }, 'Server deleted');
-    };
     var serverRows = [];
     var pushServerGroup = function (g, name, fee, rs) {
       var editing = !!g && !!srvEdit && srvEdit.id === g.id;
-      serverRows.push({ isHead: !editing, isEdit: editing, isItem: false, canDelete: !!g,
+      serverRows.push({ isHead: !editing, isEdit: editing, isItem: false,
         title: name + ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + fee : ''), item: '', customer: '', due: '', amount: '', cost: '',
         editName: editing ? srvEdit.name : '', editFee: editing ? srvEdit.fee : '',
         startEdit: g ? function () { self.setState({ srvEdit: { id: g.id, name: g.name, fee: String(g.server_fee) }, srvErr: '' }); } : null,
         onEditName: function (e) { setSrvEdit({ name: e.target.value }); },
         onEditFee: function (e) { setSrvEdit({ fee: e.target.value }); },
         save: g ? function () { saveSrv(g.id, self.state.srvEdit.name, self.state.srvEdit.fee); } : null,
-        cancel: function () { self.setState({ srvEdit: null, srvErr: '' }); },
-        del: g ? function () { deleteSrv(g, rs); } : null });
-      rs.forEach(function (r) { serverRows.push({ isHead: false, isEdit: false, isItem: true, title: '', item: r.item, customer: cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0) }); });
+        cancel: function () { self.setState({ srvEdit: null, srvErr: '' }); } });
+      rs.forEach(function (r) {
+        serverRows.push({ isHead: false, isEdit: false, isItem: true, title: '', item: r.item, customer: cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0),
+          groupId: r.group_id != null ? String(r.group_id) : '',
+          onGroup: function (e) { self.act(async function () { await dbUpdate('renewals', r.id, { group_id: e.target.value ? +e.target.value : null }); }, 'Domain moved'); },
+          del: function () { if (!confirm('Delete "' + r.item + '"?')) return; self.act(async function () { await dbUpdate('renewals', r.id, { is_active: false }); }, 'Domain deleted'); } });
+      });
     };
     var activeRen = DB.renewals.filter(function (r) { return r.is_active && !r.is_own; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
     DB.renewal_groups.filter(function (g) { return g.is_active; }).sort(function (a, b) { return a.id - b.id; }).forEach(function (g) {
