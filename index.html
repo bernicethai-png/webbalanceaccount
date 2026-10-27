@@ -1319,20 +1319,20 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
         <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
           <h2 style="margin: 0; font-size: 17px">Servers</h2>
           <p style="margin: 6px 0 0; color: #4B5563; font-size: 13px">Domains grouped by the server they run on · double-click a server to edit it · change a domain's server in the Server column below</p>
-          <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 12px">
+          <div style="display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; align-items: end; margin-top: 12px">
             <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151">New server name
-              <input value="{{srvAdd.name}}" onChange="{{srvAdd.onName}}" placeholder="e.g. Metricrm (Alibaba)" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; min-width: 220px">
+              <input value="{{srvAdd.name}}" onChange="{{srvAdd.onName}}" placeholder="e.g. Metricrm (Alibaba)" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; min-width: 200px">
             </label>
             <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151">Server fee (MYR)
-              <input type="number" value="{{srvAdd.fee}}" onChange="{{srvAdd.onFee}}" placeholder="0.00" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 140px; font-family: 'IBM Plex Mono',monospace">
+              <input type="number" value="{{srvAdd.fee}}" onChange="{{srvAdd.onFee}}" placeholder="0.00" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 120px; font-family: 'IBM Plex Mono',monospace">
             </label>
             <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151">Domain
-              <select value="{{asg.id}}" onChange="{{asg.onId}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; min-width: 240px">
+              <select value="{{asg.id}}" onChange="{{asg.onId}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; min-width: 220px">
                 <template data-sc="for" list="{{domainOpts}}" as="d" hint-placeholder-count="20"><option value="{{d.v}}">{{d.label}}</option></template>
               </select>
             </label>
             <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151">Server
-              <select value="{{asg.group}}" onChange="{{asg.onGroup}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; min-width: 200px">
+              <select value="{{asg.group}}" onChange="{{asg.onGroup}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; min-width: 170px">
                 <template data-sc="for" list="{{serverOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.label}}</option></template>
               </select>
             </label>
@@ -1358,7 +1358,12 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                 <template data-sc="for" list="{{serverRows}}" as="s" hint-placeholder-count="12">
                   <template data-sc="if" value="{{s.isHead}}" hint-placeholder-val="{{ false }}">
                     <tr style="background: #F7F8FA" onDblclick="{{s.startEdit}}" onDragover="{{s.dragOver}}" onDrop="{{s.dropOn}}">
-                      <td colspan="6" style="padding: 10px; font-weight: 600; border-top: 8px solid #F2F5F4">{{s.title}}</td>
+                      <td colspan="5" style="padding: 10px; font-weight: 600; border-top: 8px solid #F2F5F4">{{s.title}}</td>
+                      <td style="padding: 10px; border-top: 8px solid #F2F5F4; text-align: right">
+                        <template data-sc="if" value="{{s.canDelete}}" hint-placeholder-val="{{ false }}">
+                          <button type="button" onClick="{{s.del}}" style="padding: 4px 10px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">Delete server</button>
+                        </template>
+                      </td>
                     </tr>
                   </template>
                   <template data-sc="if" value="{{s.isEdit}}" hint-placeholder-val="{{ false }}">
@@ -3006,7 +3011,11 @@ class Component extends DCLogic {
       var groupKey = g ? String(g.id) : '';
       var allowDrop = function (e) { if (srvDragId != null) e.preventDefault(); };
       var dropHere = function (e) { e.preventDefault(); moveDomain(groupKey); };
-      serverRows.push({ isHead: !editing, isEdit: editing, isItem: false, dragOver: allowDrop, dropOn: dropHere,
+      var delEmpty = (g && rs.length === 0) ? function () {
+        if (!confirm('Delete server "' + g.name + '"?')) return;
+        self.act(async function () { await dbUpdate('renewal_groups', g.id, { is_active: false }); self.setState({ srvEdit: null, srvErr: '' }); }, 'Server deleted');
+      } : null;
+      serverRows.push({ isHead: !editing, isEdit: editing, isItem: false, dragOver: allowDrop, dropOn: dropHere, canDelete: !!delEmpty, del: delEmpty,
         title: name + ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + fee : ''), item: '', customer: '', due: '', amount: '', cost: '',
         editName: editing ? srvEdit.name : '', editFee: editing ? srvEdit.fee : '',
         startEdit: g ? function () { self.setState({ srvEdit: { id: g.id, name: g.name, fee: String(g.server_fee) }, srvErr: '' }); } : null,
