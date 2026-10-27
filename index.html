@@ -1360,7 +1360,7 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                 <template data-sc="for" list="{{serverRows}}" as="s" hint-placeholder-count="12">
                   <template data-sc="if" value="{{s.isHead}}" hint-placeholder-val="{{ false }}">
                     <tr style="background: #F7F8FA" onDblclick="{{s.startEdit}}" onDragover="{{s.dragOver}}" onDrop="{{s.dropOn}}">
-                      <td colspan="7" style="padding: 10px; font-size: 12px; font-weight: 400; color: #16202A; border-top: 8px solid #F2F5F4">{{s.title}}</td>
+                      <td colspan="7" style="padding: 10px; font-size: 12px; font-weight: 400; color: #16202A; border-top: 8px solid #F2F5F4"><span style="font-weight: 600">{{s.serverName}}</span>{{s.title}}</td>
                       <td style="padding: 10px; border-top: 8px solid #F2F5F4; text-align: right">
                         <template data-sc="if" value="{{s.canDelete}}" hint-placeholder-val="{{ false }}">
                           <button type="button" onClick="{{s.del}}" style="padding: 3px 8px; background: #FFFFFF; color: #9B1C1C; border: 1px solid #E8B4B4; border-radius: 6px; font: inherit; font-size: 10px; cursor: pointer">Delete server</button>
@@ -3033,7 +3033,7 @@ class Component extends DCLogic {
         self.act(async function () { await dbUpdate('renewal_groups', g.id, { is_active: false }); self.setState({ srvEdit: null, srvErr: '' }); }, 'Server deleted');
       } : null;
       serverRows.push({ isHead: !editing, isEdit: editing, isItem: false, dragOver: allowDrop, dropOn: dropHere, canDelete: !!delEmpty, del: delEmpty,
-        title: name + ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + fee : '') + ' · total fee ' + fmt(rs.reduce(function (a, r) { return a + (+r.fee || 0); }, 0)), item: '', customer: '', due: '', amount: '', cost: '',
+        serverName: name, title: ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + fee : '') + ' · total fee ' + fmt(rs.reduce(function (a, r) { return a + (+r.fee || 0); }, 0)), item: '', customer: '', due: '', amount: '', cost: '',
         editName: editing ? srvEdit.name : '', editFee: editing ? srvEdit.fee : '',
         startEdit: g ? function () { self.setState({ srvEdit: { id: g.id, name: g.name, fee: String(g.server_fee) }, srvErr: '' }); } : null,
         onEditName: function (e) { setSrvEdit({ name: e.target.value }); },
