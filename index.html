@@ -1326,6 +1326,17 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
             <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151">Server fee (MYR)
               <input type="number" value="{{srvAdd.fee}}" onChange="{{srvAdd.onFee}}" placeholder="0.00" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 140px; font-family: 'IBM Plex Mono',monospace">
             </label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151">Domain
+              <select value="{{asg.id}}" onChange="{{asg.onId}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; min-width: 240px">
+                <template data-sc="for" list="{{domainOpts}}" as="d" hint-placeholder-count="20"><option value="{{d.v}}">{{d.label}}</option></template>
+              </select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151">Server
+              <select value="{{asg.group}}" onChange="{{asg.onGroup}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; min-width: 200px">
+                <template data-sc="for" list="{{serverOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.label}}</option></template>
+              </select>
+            </label>
+            <button type="button" onClick="{{asg.assign}}" style="padding: 9px 14px; background: #FFFFFF; color: #1E7A62; border: 1px solid #1E7A62; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">Assign domain</button>
             <button type="button" onClick="{{srvAdd.add}}" style="padding: 9px 14px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">+ Add server</button>
           </div>
           <template data-sc="if" value="{{srvHasErr}}" hint-placeholder-val="{{ false }}">
@@ -1338,7 +1349,6 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Due date</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Customer</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Item / website</th>
-                  <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px">Server</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Fee (Debit)</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px; text-align: right">Cost (Credit)</th>
                   <th style="color: #16202A; border-bottom: 1px solid #C9A23A; padding: 8px 10px"></th>
@@ -1348,12 +1358,12 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                 <template data-sc="for" list="{{serverRows}}" as="s" hint-placeholder-count="12">
                   <template data-sc="if" value="{{s.isHead}}" hint-placeholder-val="{{ false }}">
                     <tr style="background: #F7F8FA" onDblclick="{{s.startEdit}}" onDragover="{{s.dragOver}}" onDrop="{{s.dropOn}}">
-                      <td colspan="7" style="padding: 10px; font-weight: 600; border-top: 8px solid #F2F5F4">{{s.title}}</td>
+                      <td colspan="6" style="padding: 10px; font-weight: 600; border-top: 8px solid #F2F5F4">{{s.title}}</td>
                     </tr>
                   </template>
                   <template data-sc="if" value="{{s.isEdit}}" hint-placeholder-val="{{ false }}">
                     <tr style="background: #FFFBEA">
-                      <td colspan="7" style="padding: 10px; border-top: 8px solid #F2F5F4">
+                      <td colspan="6" style="padding: 10px; border-top: 8px solid #F2F5F4">
                         <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: end">
                           <input value="{{s.editName}}" onChange="{{s.onEditName}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; min-width: 220px">
                           <input type="number" value="{{s.editFee}}" onChange="{{s.onEditFee}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 140px; font-family: 'IBM Plex Mono',monospace">
@@ -1368,11 +1378,6 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                       <td style="padding: 6px 10px; font-family: 'IBM Plex Mono',monospace">{{s.due}}</td>
                       <td style="padding: 6px 10px">{{s.customer}}</td>
                       <td style="padding: 6px 10px; white-space: normal">{{s.item}}</td>
-                      <td style="padding: 6px 10px">
-                        <select value="{{s.groupId}}" onChange="{{s.onGroup}}" style="padding: 4px 6px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit; font-size: 12px">
-                          <template data-sc="for" list="{{serverOpts}}" as="o" hint-placeholder-count="8"><option value="{{o.v}}">{{o.label}}</option></template>
-                        </select>
-                      </td>
                       <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.amount}}</td>
                       <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.cost}}</td>
                       <td style="padding: 6px 10px; text-align: right">
@@ -3011,10 +3016,9 @@ class Component extends DCLogic {
         cancel: function () { self.setState({ srvEdit: null, srvErr: '' }); } });
       rs.forEach(function (r) {
         serverRows.push({ isHead: false, isEdit: false, isItem: true, title: '', item: r.item, customer: cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0),
-          groupId: r.group_id != null ? String(r.group_id) : '', dragOver: allowDrop, dropOn: dropHere,
+          dragOver: allowDrop, dropOn: dropHere,
           dragStart: function (e) { srvDragId = r.id; if (e && e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(r.id)); } },
           dragEnd: function () { srvDragId = null; },
-          onGroup: function (e) { self.act(async function () { await dbUpdate('renewals', r.id, { group_id: e.target.value ? +e.target.value : null }); }, 'Domain moved'); },
           del: function () { if (!confirm('Delete "' + r.item + '"?')) return; self.act(async function () { await dbUpdate('renewals', r.id, { is_active: false }); }, 'Domain deleted'); } });
       });
     };
@@ -3025,6 +3029,17 @@ class Component extends DCLogic {
     pushServerGroup(null, 'No server', '', activeRen.filter(function (r) { return r.group_id == null; }));
     var srvAdd = { name: srvNew.name, fee: srvNew.fee, onName: function (e) { setSrvNew({ name: e.target.value }); }, onFee: function (e) { setSrvNew({ fee: e.target.value }); },
       add: function () { saveSrv(null, self.state.srvNew.name, self.state.srvNew.fee); } };
+    var asgRaw = s.srvAsg || { id: '', group: '' };
+    var setSrvAsg = function (patch) { self.setState({ srvAsg: Object.assign({}, self.state.srvAsg, patch) }); };
+    var domainOpts = [{ v: '', label: '— Select domain' }].concat(activeRen.map(function (r) { return { v: String(r.id), label: r.item + ' · ' + cname(r.customer_id) }; }));
+    var asgView = { id: asgRaw.id, group: asgRaw.group,
+      onId: function (e) { setSrvAsg({ id: e.target.value }); },
+      onGroup: function (e) { setSrvAsg({ group: e.target.value }); },
+      assign: function () {
+        var rid = self.state.srvAsg ? self.state.srvAsg.id : '', grp = self.state.srvAsg ? self.state.srvAsg.group : '';
+        if (!rid) { self.setState({ srvErr: 'Please select a domain' }); return; }
+        self.act(async function () { await dbUpdate('renewals', +rid, { group_id: grp ? +grp : null }); self.setState({ srvAsg: { id: '', group: '' }, srvErr: '' }); }, 'Domain assigned');
+      } };
     var serverOpts = [{ v: '', label: '— No server' }].concat(DB.renewal_groups.filter(function (g) { return g.is_active; }).map(function (g) { return { v: String(g.id), label: g.name }; }));
     var rtRows = custRows.map(function (r, k) {
       var prev = custRows[k - 1], newGroup = rtSort === 'cust' && k > 0 && prev.custId !== r.custId;
@@ -3222,7 +3237,7 @@ class Component extends DCLogic {
       fund: { exp: fmt(expMonth), in: fmt(t.co), bal: rm(fundBal), style: 'font-family:IBM Plex Mono,monospace;color:' + (fundBal < 0 ? '#9B1C1C' : '#11603F') },
       renewSum: { yCount: ys.n, yTotal: rm(ys.sum), over: ys.over, soon: ys.soon, alertN: alerts.length },
       alerts: alerts, alertsFirst: alerts.slice(0, 9), alertsMore: alerts.slice(9), hasAlertsMore: alerts.length > 9, alertsMoreLabel: 'Show ' + (alerts.length - 9) + ' more',
-      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverRows: serverRows, serverOpts: serverOpts, srvAdd: srvAdd, srvErr: s.srvErr || '', srvHasErr: !!s.srvErr, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net),
+      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverRows: serverRows, serverOpts: serverOpts, srvAdd: srvAdd, asg: asgView, domainOpts: domainOpts, srvErr: s.srvErr || '', srvHasErr: !!s.srvErr, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net),
       renewTot: { fee: fmt(ys.sum), cost: fmt(ys.cost), net: fmt(ys.net), co: fmt(ys.co), b: fmt(ys.b), ba: fmt(ys.ba) },
       custCount: activeCust.length,
       ncFields: ncFields, ncRows: ncRows, saveNew: saveNew, ncErr: s.ncErr, hasNcErr: !!s.ncErr, ncMsg: s.ncMsg, hasNcMsg: !!s.ncMsg,
