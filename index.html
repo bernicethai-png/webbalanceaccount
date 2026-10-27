@@ -769,7 +769,7 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                   <template data-sc="for" list="{{plist}}" as="p" hint-placeholder-count="6">
                     <tr>
                       <td>{{p.date}}</td>
-                      <td style="white-space: normal; min-width: 200px"><div style="font-weight: 500"><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-weight: 500; color: #000; text-decoration: underline; cursor: pointer">{{p.title}}</button></div><div style="font-size: 11px; color: #6B7280; margin-top: 2px">{{p.customer}}</div><div style="font-size: 11px; margin-top: 4px"><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 11px; color: #1E7A62; text-decoration: underline; cursor: pointer">{{p.inv}}</button></div></td>
+                      <td style="white-space: normal; min-width: 200px"><div style="font-weight: 500"><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-weight: 500; color: #000; text-decoration: underline; cursor: pointer; text-align: left">{{p.title}}</button></div><div style="font-size: 11px; color: #6B7280; margin-top: 2px">{{p.customer}}</div><div style="font-size: 11px; margin-top: 4px"><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 11px; color: #1E7A62; text-decoration: underline; cursor: pointer">{{p.inv}}</button></div></td>
                       <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.sale}}</td>
                       <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.cost}}</td>
                       <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; border-right: 1px solid #D1D5DB">{{p.net}}</td>
@@ -2673,7 +2673,7 @@ class Component extends DCLogic {
       if (r.unmarked || !(r.doc.total > 0)) return;
       var d = r.doc, share = serverShareOf(d.renewal_id), full = d.total - d.cost - share;
       (paysBy[d.id] || []).forEach(function (p) {
-        var k = Math.min(p.amount / d.total, 1), n = full * k, x = split(n, r.es), sale = d.total * k, cost = d.cost * k;
+        var k = Math.min(p.amount / d.total, 1), n = full * k, x = split(n, r.es), sale = d.total * k, cost = (d.cost + share) * k;
         ledgerRows.push({ doc: d, id: r.id, title: r.title, customer: r.customer, custId: r.custId, src: r.src, srcStyle: r.srcStyle, es: r.es,
           iso: p.pay_date || d.doc_date, date: dmy(parseD(p.pay_date || d.doc_date)), inv: r.inv, open: r.open, pay: r.pay, payStyle: r.payStyle,
           sale: fmt(sale), cost: fmt(cost), net: fmt(n), co: fmt(x.co), bernice: fmt(x.b), balon: fmt(x.ba), paid: fmt(sale), owing: fmt(0),
