@@ -186,6 +186,29 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
 
         <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
           <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px">
+            <h2 style="margin: 0; font-size: 17px">Pending claim ({{pendingCount}})</h2>
+          </div>
+          <template data-sc="if" value="{{pendingEmpty}}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 24px; text-align: center; color: #6B7280; font-size: 14px; background: #F7F8FA; border-radius: 8px; margin-top: 12px">No pending claims</div>
+          </template>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-top: 12px">
+            <template data-sc="for" list="{{pendingRows}}" as="p" hint-placeholder-count="4">
+              <div style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #EEF0F2; border-radius: 8px">
+                <div style="display: flex; justify-content: space-between; align-items: start; gap: 8px">
+                  <div style="min-width: 0">
+                    <div style="font-size: 13px; color: #16202A; font-weight: 600">{{p.desc}}</div>
+                    <div style="font-size: 12px; color: #6B7280; margin-top: 2px">{{p.cat}} · {{p.cust}} · {{p.date}}</div>
+                  </div>
+                  <div style="font-family: 'IBM Plex Mono',monospace; font-size: 13px; font-weight: 600; color: #16202A; flex-shrink: 0">{{p.amount}}</div>
+                </div>
+                <button type="button" onClick="{{p.markPaid}}" style="padding: 6px 12px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer">Paid</button>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <section style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 20px">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px">
             <h2 style="margin: 0; font-size: 17px">Renewal reminders · {{renewSum.over}} expired, {{renewSum.soon}} due within 30 days</h2>
             <button type="button" onClick="{{goRenew}}" style="border: 0; background: none; color: #1E7A62; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 8px 0">All {{renewSum.yCount}} items · yearly {{renewSum.yTotal}} →</button>
           </div>
@@ -824,6 +847,9 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                 <option value="">— No customer —</option>
                 <template data-sc="for" list="{{custOpts}}" as="o" hint-placeholder-count="28"><option value="{{o.v}}">{{o.name}}</option></template>
               </select>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #374151; padding-bottom: 11px">
+              <input type="checkbox" checked="{{ef.pending}}" onChange="{{ef.onPending}}" style="width: 16px; height: 16px">Pending claim
             </label>
             <div style="display: flex; gap: 6px">
               <button type="button" onClick="{{ef.save}}" style="padding: 11px 16px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">{{efSaveLabel}}</button>
@@ -2609,7 +2635,13 @@ class Component extends DCLogic {
     var pc = function (v) { return t.net > 0 ? Math.max(v / t.net * 100, 0).toFixed(2) : 0; };
 
     // ---------- Expense ----------
-    var expenses = DB.expenses.map(function (x) { return { id: x.id, date: x.exp_date, desc: x.description, cat: x.category, amount: x.amount, custId: x.customer_id }; });
+    var expenses = DB.expenses.map(function (x) { return { id: x.id, date: x.exp_date, desc: x.description, cat: x.category, amount: x.amount, custId: x.customer_id, pending: !!x.pending_claim }; });
+    var pendingExp = expenses.filter(function (x) { return x.pending; }).sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : a.id - b.id); });
+    var pendingSum = pendingExp.reduce(function (a, x) { return a + x.amount; }, 0);
+    var pendingRows = pendingExp.map(function (x) {
+      return { desc: x.desc, cat: x.cat, cust: x.custId ? cname(x.custId) : '—', date: dmy(parseD(x.date)), amount: fmt(x.amount),
+        markPaid: function () { self.act(async function () { await dbUpdate('expenses', x.id, { pending_claim: false }); }, 'Marked as paid'); } };
+    });
     var expMonth = expenses.filter(function (x) { return x.date >= monthStart && x.date <= monthEnd && x.cat !== 'Salary' && x.cat !== 'Dividend paid'; }).reduce(function (a, x) { return a + x.amount; }, 0);
     var partner = t.b + t.ba, fromP = Math.min(SALARY, Math.max(partner, 0)), fromCo = SALARY - fromP;
     var bDed = partner > 0 ? fromP * t.b / partner : 0, baDed = fromP - bDed;
@@ -2621,8 +2653,9 @@ class Component extends DCLogic {
     var CAT_STYLE = { 'Gifts': badge('#F6E3EE', '#8B1D5C'), 'Travel / events': badge('#FCEFC7', '#7A5200'), 'Hosting / domain / theme': badge('#DCE6F7', '#1D4485'), 'Software / subscriptions': badge('#DDF2EA', '#155A48'), 'Equipment / repairs': badge('#EDE7F6', '#4C2C92'), 'Salary': badge('#FBE7DA', '#8A3B0E'), 'Dividend paid': badge('#FBE7DA', '#8A3B0E'), 'Bonus': badge('#FADADA', '#9B1C1C') };
     var ef0 = s.expEdit || s.ef || {};
     var setEf = function (k) { return function (e) { var stateKey = s.expEdit ? 'expEdit' : 'ef'; var d = Object.assign({}, self.state[stateKey]); d[k] = e.target.value; self.setState({ [stateKey]: d, expErr: '' }); }; };
-    var ef = { date: ef0.date || TODAY, desc: ef0.desc || '', cat: ef0.cat || 'Gifts', amount: ef0.amount || '', cust: ef0.cust || '',
+    var ef = { date: ef0.date || TODAY, desc: ef0.desc || '', cat: ef0.cat || 'Gifts', amount: ef0.amount || '', cust: ef0.cust || '', pending: !!ef0.pending,
       onDate: setEf('date'), onDesc: setEf('desc'), onCat: setEf('cat'), onAmount: setEf('amount'), onCust: setEf('cust'),
+      onPending: function (e) { var stateKey = s.expEdit ? 'expEdit' : 'ef'; var d = Object.assign({}, self.state[stateKey]); d.pending = e.target.checked; self.setState({ [stateKey]: d, expErr: '' }); },
       err: s.expErr, hasErr: !!s.expErr,
       save: function () {
         var e0 = s.expEdit || self.state.ef || {}, amt = num(e0.amount);
@@ -2630,10 +2663,10 @@ class Component extends DCLogic {
         if (!(amt > 0)) { self.setState({ expErr: 'Please enter an amount' }); return; }
         self.act(async function () {
           if (e0.id) {
-            await dbUpdate('expenses', e0.id, { exp_date: e0.date, description: e0.desc.trim(), category: e0.cat, amount: r2(amt) });
+            await dbUpdate('expenses', e0.id, { exp_date: e0.date, description: e0.desc.trim(), category: e0.cat, amount: r2(amt), pending_claim: !!e0.pending });
             self.setState({ expEdit: null, expErr: '' });
           } else {
-            await dbInsert('expenses', { exp_date: e0.date || TODAY, description: e0.desc.trim(), category: e0.cat || 'Gifts', amount: r2(amt), customer_id: e0.cust ? +e0.cust : null });
+            await dbInsert('expenses', { exp_date: e0.date || TODAY, description: e0.desc.trim(), category: e0.cat || 'Gifts', amount: r2(amt), customer_id: e0.cust ? +e0.cust : null, pending_claim: !!e0.pending });
             self.setState({ ef: {}, expErr: '' });
           }
         }, e0.id ? 'Updated' : 'Expense recorded');
@@ -2646,7 +2679,7 @@ class Component extends DCLogic {
     var expRows = expIn.map(function (x) {
       return { date: dmy(parseD(x.date)), desc: x.desc, cat: x.cat, catStyle: CAT_STYLE[x.cat] || MUTED, cust: x.custId ? cname(x.custId) : '—', amount: fmt(x.amount),
         isConfirm: s.expDel === x.id, notConfirm: s.expDel !== x.id,
-        onEdit: function () { self.setState({ expEdit: { id: x.id, date: x.date, desc: x.desc, cat: x.cat, amount: x.amount, custId: x.custId } }); },
+        onEdit: function () { self.setState({ expEdit: { id: x.id, date: x.date, desc: x.desc, cat: x.cat, amount: x.amount, custId: x.custId, pending: x.pending } }); },
         onDel: function () { self.setState({ expDel: x.id }); },
         cancel: function () { self.setState({ expDel: null }); },
         doDel: function () { self.act(async function () { await dbDelete('expenses', x.id); self.setState({ expDel: null }); }, 'Deleted'); } };
@@ -3089,9 +3122,10 @@ class Component extends DCLogic {
         { label: 'Revenue this month', value: rm(t.sale), sub: projects.length + ' invoices' },
         { label: 'Direct cost', value: rm(t.cost), sub: 'Outsourcing, hardware, hosting' },
         { label: 'Net profit', value: rm(t.net), sub: t.sale > 0 ? 'Margin ' + (t.net / t.sale * 100).toFixed(1) + '%' : 'No invoices this month yet' },
-        { label: 'Outstanding', value: rm(allOwing), sub: owingN + ' invoices not fully paid' }
+        { label: 'Outstanding', value: rm(allOwing), sub: owingN + ' invoices not fully paid' },
+        { label: 'Pending claim', value: rm(pendingSum), sub: pendingExp.length + ' expenses waiting to be paid' }
       ],
-      tot: tot, sal: sal,
+      tot: tot, sal: sal, pendingRows: pendingRows, pendingCount: pendingExp.length, pendingEmpty: pendingExp.length === 0,
       pYear: String(pYear), pYears: pYears, onPYear: function (e) { self.setState({ pYear: e.target.value }); },
       plist: plist, pKpis: pKpis, ptot: ptot,
       pCount: plist.length, hasOld: plist.some(function (r) { return r.iso < '2025-01-01'; }),
