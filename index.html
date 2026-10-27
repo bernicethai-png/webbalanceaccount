@@ -1420,6 +1420,10 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                 <tr style="background: #F7F8FA">
                   <td colspan="4" style="padding: 8px 10px; font-size: 12px; color: #4B5563">Company {{renewTot.co}} · Bernice {{renewTot.b}} · Balon {{renewTot.ba}}</td>
                 </tr>
+                <tr style="background: #F7F8FA">
+                  <td colspan="3" style="padding: 8px 10px; font-weight: 600">Total server fee ({{serverFeeCount}} servers)</td>
+                  <td style="padding: 8px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600">{{serverFeeTotal}}</td>
+                </tr>
                 <tr style="background: #EEF8F4">
                   <td colspan="3" style="padding: 10px; font-weight: 700">Net Profit (full year)</td>
                   <td style="padding: 10px; text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 700; color: #155A48">{{rtNet}}</td>
@@ -3255,7 +3259,7 @@ class Component extends DCLogic {
       fund: { exp: fmt(expMonth), in: fmt(t.co), bal: rm(fundBal), style: 'font-family:IBM Plex Mono,monospace;color:' + (fundBal < 0 ? '#9B1C1C' : '#11603F') },
       renewSum: { yCount: ys.n, yTotal: rm(ys.sum), over: ys.over, soon: ys.soon, alertN: alerts.length },
       alerts: alerts, alertsFirst: alerts.slice(0, 9), alertsMore: alerts.slice(9), hasAlertsMore: alerts.length > 9, alertsMoreLabel: 'Show ' + (alerts.length - 9) + ' more',
-      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverRows: serverRows, serverOpts: serverOpts, srvAdd: srvAdd, asg: asgView, domainOpts: domainOpts, srvErr: s.srvErr || '', srvHasErr: !!s.srvErr, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net),
+      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverRows: serverRows, serverOpts: serverOpts, srvAdd: srvAdd, asg: asgView, domainOpts: domainOpts, srvErr: s.srvErr || '', srvHasErr: !!s.srvErr, rtOwnCost: fmt(ownCost), rtNet: rm(ys.net), serverFeeTotal: rm(DB.renewal_groups.filter(function (g) { return g.is_active; }).reduce(function (a, g) { return a + (+g.server_fee || 0); }, 0)), serverFeeCount: DB.renewal_groups.filter(function (g) { return g.is_active; }).length,
       renewTot: { fee: fmt(ys.sum), cost: fmt(ys.cost), net: fmt(ys.net), co: fmt(ys.co), b: fmt(ys.b), ba: fmt(ys.ba) },
       custCount: activeCust.length,
       ncFields: ncFields, ncRows: ncRows, saveNew: saveNew, ncErr: s.ncErr, hasNcErr: !!s.ncErr, ncMsg: s.ncMsg, hasNcMsg: !!s.ncMsg,
