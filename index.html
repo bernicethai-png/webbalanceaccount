@@ -1384,7 +1384,10 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                     <tr draggable="true" style="cursor: move" onDragstart="{{s.dragStart}}" onDragend="{{s.dragEnd}}" onDragover="{{s.dragOver}}" onDrop="{{s.dropOn}}">
                       <td style="padding: 6px 10px; font-family: 'IBM Plex Mono',monospace">{{s.due}}</td>
                       <td style="padding: 6px 10px; white-space: nowrap; {{s.daysStyle}}">{{s.daysTxt}}</td>
-                      <td style="padding: 6px 10px">{{s.customer}}</td>
+                      <td style="padding: 6px 10px">
+                        <template data-sc="if" value="{{s.hasLink}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{s.openCust}}" style="padding: 0; border: 0; background: none; font: inherit; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left">{{s.customer}}</button></template>
+                        <template data-sc="if" value="{{s.noLink}}" hint-placeholder-val="{{ false }}">{{s.customer}}</template>
+                      </td>
                       <td style="padding: 6px 10px; white-space: normal">{{s.item}}</td>
                       <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.amount}}</td>
                       <td style="padding: 6px 10px; text-align: right; font-family: 'IBM Plex Mono',monospace">{{s.cost}}</td>
@@ -3041,6 +3044,8 @@ class Component extends DCLogic {
         cancel: function () { self.setState({ srvEdit: null, srvErr: '' }); } });
       rs.forEach(function (r) {
         serverRows.push({ isHead: false, isEdit: false, isItem: true, title: '', item: r.item, customer: cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0),
+          hasLink: !!r.customer_id, noLink: !r.customer_id,
+          openCust: function () { self.setState({ tab: 'cust', custDetail: r.customer_id, backTab: 'renew' }); },
           serverShare: perDomain, dragOver: allowDrop, dropOn: dropHere, daysTxt: daysLeft(r.due_date).txt, daysStyle: daysLeft(r.due_date).style,
           dragStart: function (e) { srvDragId = r.id; if (e && e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(r.id)); } },
           dragEnd: function () { srvDragId = null; },
