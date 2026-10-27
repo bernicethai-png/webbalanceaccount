@@ -1347,7 +1347,7 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
               <tbody>
                 <template data-sc="for" list="{{serverRows}}" as="s" hint-placeholder-count="12">
                   <template data-sc="if" value="{{s.isHead}}" hint-placeholder-val="{{ false }}">
-                    <tr style="background: #F7F8FA" onDblclick="{{s.startEdit}}">
+                    <tr style="background: #F7F8FA" onDblclick="{{s.startEdit}}" onDragover="{{s.dragOver}}" onDrop="{{s.dropOn}}">
                       <td colspan="7" style="padding: 10px; font-weight: 600; border-top: 8px solid #F2F5F4">{{s.title}}</td>
                     </tr>
                   </template>
@@ -1364,7 +1364,7 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                     </tr>
                   </template>
                   <template data-sc="if" value="{{s.isItem}}" hint-placeholder-val="{{ false }}">
-                    <tr>
+                    <tr draggable="true" style="cursor: move" onDragstart="{{s.dragStart}}" onDragend="{{s.dragEnd}}" onDragover="{{s.dragOver}}" onDrop="{{s.dropOn}}">
                       <td style="padding: 6px 10px; font-family: 'IBM Plex Mono',monospace">{{s.due}}</td>
                       <td style="padding: 6px 10px">{{s.customer}}</td>
                       <td style="padding: 6px 10px; white-space: normal">{{s.item}}</td>
@@ -1670,6 +1670,7 @@ function effSrc(src, dateIso) {
 // ---------- Supabase ----------
 var SB = null;
 var DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [], staff: [], payslips: [], renewal_groups: [] };
+var srvDragId = null;
 var TABLE = { customers: 'customers', renewals: 'renewals', docs: 'documents', payments: 'payments', expenses: 'expenses', staff: 'staff', payslips: 'payslips', renewal_groups: 'renewal_groups' };
 // stored status values stay as they are in the data; this is only what the screen shows
 var STATUS_EN = { '草稿': 'Draft', '已发出': 'Sent', '已接受': 'Accepted', '已转 Invoice': 'Converted to invoice', '未付款': 'Unpaid', 'Expired': 'Expired' };
@@ -2988,9 +2989,19 @@ class Component extends DCLogic {
       }, id ? 'Server updated' : 'Server added');
     };
     var serverRows = [];
+    var moveDomain = function (key) {
+      var id = srvDragId;
+      srvDragId = null;
+      var r = id == null ? null : DB.renewals.filter(function (x) { return x.id === id; })[0];
+      if (!r || (r.group_id == null ? '' : String(r.group_id)) === key) return;
+      self.act(async function () { await dbUpdate('renewals', r.id, { group_id: key ? +key : null }); }, 'Domain moved');
+    };
     var pushServerGroup = function (g, name, fee, rs) {
       var editing = !!g && !!srvEdit && srvEdit.id === g.id;
-      serverRows.push({ isHead: !editing, isEdit: editing, isItem: false,
+      var groupKey = g ? String(g.id) : '';
+      var allowDrop = function (e) { if (srvDragId != null) e.preventDefault(); };
+      var dropHere = function (e) { e.preventDefault(); moveDomain(groupKey); };
+      serverRows.push({ isHead: !editing, isEdit: editing, isItem: false, dragOver: allowDrop, dropOn: dropHere,
         title: name + ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + fee : ''), item: '', customer: '', due: '', amount: '', cost: '',
         editName: editing ? srvEdit.name : '', editFee: editing ? srvEdit.fee : '',
         startEdit: g ? function () { self.setState({ srvEdit: { id: g.id, name: g.name, fee: String(g.server_fee) }, srvErr: '' }); } : null,
@@ -3000,7 +3011,9 @@ class Component extends DCLogic {
         cancel: function () { self.setState({ srvEdit: null, srvErr: '' }); } });
       rs.forEach(function (r) {
         serverRows.push({ isHead: false, isEdit: false, isItem: true, title: '', item: r.item, customer: cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0),
-          groupId: r.group_id != null ? String(r.group_id) : '',
+          groupId: r.group_id != null ? String(r.group_id) : '', dragOver: allowDrop, dropOn: dropHere,
+          dragStart: function (e) { srvDragId = r.id; if (e && e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(r.id)); } },
+          dragEnd: function () { srvDragId = null; },
           onGroup: function (e) { self.act(async function () { await dbUpdate('renewals', r.id, { group_id: e.target.value ? +e.target.value : null }); }, 'Domain moved'); },
           del: function () { if (!confirm('Delete "' + r.item + '"?')) return; self.act(async function () { await dbUpdate('renewals', r.id, { is_active: false }); }, 'Domain deleted'); } });
       });
