@@ -869,10 +869,10 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px">
           <template data-sc="for" list="{{expByCat}}" as="k" hint-placeholder-count="5">
-            <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 10px; padding: 14px 16px">
+            <button type="button" onClick="{{k.pick}}" style="{{k.cardStyle}}">
               <div style="font-size: 13px; color: #4B5563">{{k.cat}}</div>
               <div style="font-family: 'IBM Plex Mono',monospace; font-size: 18px; margin-top: 4px">{{k.total}}</div>
-            </div>
+            </button>
           </template>
         </div>
 
@@ -2817,7 +2817,7 @@ class Component extends DCLogic {
     var eYear = (s.eYear && eYearsAll.indexOf(+s.eYear) >= 0) ? +s.eYear : Y;
     var eFrom = eYear + '-01-01', eTo = eYear + '-12-31';
     var expIn = expenses.filter(function (x) { return x.date >= eFrom && x.date <= eTo; }).sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : b.id - a.id); });
-    var expRows = expIn.map(function (x) {
+    var expRows = expIn.filter(function (x) { return !expCatSel || x.cat === expCatSel; }).map(function (x) {
       return { date: dmy(parseD(x.date)), desc: x.desc, cat: x.cat, catStyle: CAT_STYLE[x.cat] || MUTED, cust: x.custId ? cname(x.custId) : '—', amount: fmt(x.amount),
         isConfirm: s.expDel === x.id, notConfirm: s.expDel !== x.id,
         onEdit: function () { self.setState({ expEdit: { id: x.id, date: x.date, desc: x.desc, cat: x.cat, amount: x.amount, custId: x.custId, pending: x.pending } }); },
@@ -2825,7 +2825,14 @@ class Component extends DCLogic {
         cancel: function () { self.setState({ expDel: null }); },
         doDel: function () { self.act(async function () { await dbDelete('expenses', x.id); self.setState({ expDel: null }); }, 'Deleted'); } };
     });
-    var expByCat = CATS.map(function (c) { var v = expIn.filter(function (x) { return x.cat === c; }).reduce(function (a, x) { return a + x.amount; }, 0); return { cat: c, v: v, total: rm(v) }; }).filter(function (k) { return k.v > 0; });
+    var expCatSel = s.expCat || null;
+    var expByCat = CATS.map(function (c) {
+      var v = expIn.filter(function (x) { return x.cat === c; }).reduce(function (a, x) { return a + x.amount; }, 0);
+      var on = expCatSel === c;
+      return { cat: c, v: v, total: rm(v), on: on,
+        cardStyle: 'text-align: left; cursor: pointer; background: #FFFFFF; border: 2px solid ' + (on ? '#1E7A62' : '#E5E7EB') + '; border-radius: 10px; padding: 13px 15px; font: inherit',
+        pick: function () { self.setState({ expCat: expCatSel === c ? null : c }); } };
+    }).filter(function (k) { return k.v > 0; });
     var eYearOpts = eYearsAll.map(function (y) { return { v: String(y), label: String(y) }; });
 
     // ---------- All transactions ----------
