@@ -2742,7 +2742,7 @@ class Component extends DCLogic {
     var pYear = (s.pYear && pYearsAll.indexOf(+s.pYear) >= 0) ? +s.pYear : Y;
     var pFrom = pYear + '-01-01', pTo = pYear + '-12-31';
     var plist = ledgerRows.filter(function (r) { return r.iso >= pFrom && r.iso <= pTo; });
-    // 薪水缺口（Projects 和 Dividends 共用）：每月先从公司留存出，不够的部分按 Bernice / Balon 分红比例扣
+    // 薪水缺口（Projects 和 Dividends 共用）：每月先从公司留存出，不够的部分 Bernice 扣 45%、Balon 扣 55%
     var salaryDeduct = function (year, rows) {
       var out = { co: 0, b: 0, ba: 0 }, nowYm = todayIso().slice(0, 7);
       for (var sm = 1; sm <= 12; sm++) {
@@ -2753,8 +2753,8 @@ class Component extends DCLogic {
         var mExp = DB.expenses.filter(function (x) { return x.exp_date.slice(0, 7) === ym && x.category !== 'Salary' && x.category !== 'Dividend paid' && x.category !== 'Server (paid via customer share)'; }).reduce(function (a, x) { return a + x.amount; }, 0);
         var mPartner = mB + mBa, mFrom = mPartner > 0 ? Math.min(SALARY, Math.max(mCo - mExp, 0)) : SALARY, mShort = SALARY - mFrom;
         out.co += mFrom;
-        out.b += mPartner > 0 ? mShort * mB / mPartner : 0;
-        out.ba += mPartner > 0 ? mShort * mBa / mPartner : 0;
+        out.b += mPartner > 0 ? mShort * 0.45 : 0;
+        out.ba += mPartner > 0 ? mShort * 0.55 : 0;
       }
       return out;
     };
@@ -2789,7 +2789,7 @@ class Component extends DCLogic {
     // 薪水：先从公司留存出（扣完开销后剩下的），不够的部分按 Bernice / Balon 分红比例分摊
     var partner = t.b + t.ba, salAvail = Math.max(t.co - expMonth, 0);
     var fromCo = partner > 0 ? Math.min(SALARY, salAvail) : SALARY, salShort = SALARY - fromCo;
-    var bDed = partner > 0 ? salShort * t.b / partner : 0, baDed = partner > 0 ? salShort - bDed : 0;
+    var bDed = partner > 0 ? salShort * 0.45 : 0, baDed = partner > 0 ? salShort * 0.55 : 0;
     var sal = { bDed: fmt(bDed), baDed: fmt(baDed), fromCo: fmt(fromCo), bFinal: rm(t.b - bDed), baFinal: rm(t.ba - baDed),
       bTake: rm(t.b - bDed + SALARY), coFinal: rm(t.co - fromCo - expMonth - ownMonth),
       note: salShort > 0 ? 'Company retained is not enough for salary, shortfall RM ' + fmt(salShort) + ' is deducted from Bernice and Balon pro rata' : 'Salary is paid from company retained; dividends are untouched' };
