@@ -3137,7 +3137,7 @@ class Component extends DCLogic {
         serverRows.push({ isHead: false, isEdit: false, isItem: true, title: '', item: r.item, customer: cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0),
           hasLink: !!r.customer_id, noLink: !r.customer_id,
           openCust: function () { self.setState({ tab: 'cust', custDetail: r.customer_id, backTab: 'renew' }); },
-          serverShare: perDomain, dragOver: allowDrop, dropOn: dropHere, daysTxt: daysLeft(r.due_date).txt, daysStyle: daysLeft(r.due_date).style,
+          serverShare: fmt(serverShareOf(r.id, curYear)), dragOver: allowDrop, dropOn: dropHere, daysTxt: daysLeft(r.due_date).txt, daysStyle: daysLeft(r.due_date).style,
           dragStart: function (e) { srvDragId = r.id; if (e && e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(r.id)); } },
           dragEnd: function () { srvDragId = null; },
           del: function () { if (!confirm('Delete "' + r.item + '"?')) return; self.act(async function () { await dbUpdate('renewals', r.id, { is_active: false }); }, 'Domain deleted'); } });
