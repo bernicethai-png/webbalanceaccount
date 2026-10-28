@@ -2682,14 +2682,24 @@ class Component extends DCLogic {
         ba: isOld ? 'year-end by balance 60%' : (isB0 ? fmt(n * 0.5) + ' × 55%' : (no10 ? fmt(n) + ' × 55%' : (isB ? fmt(n * 0.45) + ' × 55%' : fmt(n * 0.9) + ' × 55%')))
       };
     };
-    var grpById = {}, grpCount = {}, renById = {};
+    var grpById = {}, renById = {};
     DB.renewal_groups.forEach(function (g) { grpById[g.id] = g; });
-    DB.renewals.forEach(function (r) { renById[r.id] = r; if (r.is_active && !r.is_own && r.group_id != null) grpCount[r.group_id] = (grpCount[r.group_id] || 0) + 1; });
+    // 服务器分摊：有设置比例的域名按比例扣；剩下的比例平均分给没有设置比例的域名
+    var grpPct = {}, grpFree = {};
+    DB.renewals.forEach(function (r) {
+      renById[r.id] = r;
+      if (!r.is_active || r.is_own || r.group_id == null) return;
+      if (r.server_share_pct != null) grpPct[r.group_id] = (grpPct[r.group_id] || 0) + (+r.server_share_pct);
+      else grpFree[r.group_id] = (grpFree[r.group_id] || 0) + 1;
+    });
     // 续费域名分摊到的服务器费用 = 服务器费用 ÷ 该组域名数
     var serverShareOf = function (renewalId, year) {
       var r = renewalId == null ? null : renById[renewalId], g = (r && r.group_id != null) ? grpById[r.group_id] : null;
-      if (!r || !r.is_active || !g || !g.is_active || !grpCount[g.id]) return 0;
-      return feeFor(g.id, year) / grpCount[g.id];
+      if (!r || !r.is_active || !g || !g.is_active) return 0;
+      var fee = feeFor(g.id, year);
+      if (r.server_share_pct != null) return fee * (+r.server_share_pct) / 100;
+      if (!grpFree[g.id]) return 0;
+      return fee * Math.max(100 - (grpPct[g.id] || 0), 0) / 100 / grpFree[g.id];
     };
     var ledgerRows = [];
     allRows.forEach(function (r) {
