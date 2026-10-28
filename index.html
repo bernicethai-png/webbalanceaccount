@@ -1373,6 +1373,7 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                       <td colspan="8" style="padding: 10px; border-top: 8px solid #F2F5F4">
                         <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: end">
                           <input value="{{s.editName}}" onChange="{{s.onEditName}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; min-width: 220px">
+                          <input type="number" value="{{s.editYear}}" onChange="{{s.onEditYear}}" placeholder="Year" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 90px; font-family: 'IBM Plex Mono',monospace">
                           <input type="number" value="{{s.editFee}}" onChange="{{s.onEditFee}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 140px; font-family: 'IBM Plex Mono',monospace">
                           <button type="button" onClick="{{s.save}}" style="padding: 8px 14px; background: #1E7A62; color: #FFFFFF; border: 0; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer">Save</button>
                           <button type="button" onClick="{{s.cancel}}" style="padding: 8px 14px; background: #FFFFFF; color: #374151; border: 1px solid #D1D5DB; border-radius: 6px; font: inherit; cursor: pointer">Cancel</button>
@@ -1685,9 +1686,14 @@ function effSrc(src, dateIso) {
 
 // ---------- Supabase ----------
 var SB = null;
-var DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [], staff: [], payslips: [], renewal_groups: [] };
+var DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [], staff: [], payslips: [], renewal_groups: [], renewal_group_fees: [] };
 var srvDragId = null;
-var TABLE = { customers: 'customers', renewals: 'renewals', docs: 'documents', payments: 'payments', expenses: 'expenses', staff: 'staff', payslips: 'payslips', renewal_groups: 'renewal_groups' };
+var TABLE = { customers: 'customers', renewals: 'renewals', docs: 'documents', payments: 'payments', expenses: 'expenses', staff: 'staff', payslips: 'payslips', renewal_groups: 'renewal_groups', renewal_group_fees: 'renewal_group_fees' };
+// 服务器年费：按年份取；如果那一年没有记录，用最近的上一年
+function feeFor(groupId, year) {
+  var rows = DB.renewal_group_fees.filter(function (f) { return f.group_id === groupId && f.year <= year; }).sort(function (a, b) { return b.year - a.year; });
+  return rows.length ? (+rows[0].fee || 0) : 0;
+}
 // stored status values stay as they are in the data; this is only what the screen shows
 var STATUS_EN = { '草稿': 'Draft', '已发出': 'Sent', '已接受': 'Accepted', '已转 Invoice': 'Converted to invoice', '未付款': 'Unpaid', 'Expired': 'Expired' };
 function stEn(x) { return STATUS_EN[x] || x; }
@@ -1868,7 +1874,7 @@ class Component extends DCLogic {
     SB = window.supabase.createClient(WB_CONFIG.url, WB_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     SB.auth.onAuthStateChange(function (event, session) {
       if (event === 'PASSWORD_RECOVERY') { self.setState({ gate: 'recovery', lg: Object.assign({}, self.state.lg, { err: '', msg: '' }) }); return; }
-      if (event === 'SIGNED_OUT') { DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [], staff: [], payslips: [], renewal_groups: [] }; self.setState({ gate: 'out', userEmail: '' }); return; }
+      if (event === 'SIGNED_OUT') { DB = { customers: [], renewals: [], docs: [], payments: [], expenses: [], staff: [], payslips: [], renewal_groups: [], renewal_group_fees: [] }; self.setState({ gate: 'out', userEmail: '' }); return; }
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session && self.state.gate !== 'recovery' && self.state.gate !== 'in' && self.state.gate !== 'loadingData') {
         setTimeout(function () { self.afterLogin(session); }, 0);
       }
@@ -2663,15 +2669,15 @@ class Component extends DCLogic {
     DB.renewal_groups.forEach(function (g) { grpById[g.id] = g; });
     DB.renewals.forEach(function (r) { renById[r.id] = r; if (r.is_active && !r.is_own && r.group_id != null) grpCount[r.group_id] = (grpCount[r.group_id] || 0) + 1; });
     // 续费域名分摊到的服务器费用 = 服务器费用 ÷ 该组域名数
-    var serverShareOf = function (renewalId) {
+    var serverShareOf = function (renewalId, year) {
       var r = renewalId == null ? null : renById[renewalId], g = (r && r.group_id != null) ? grpById[r.group_id] : null;
       if (!r || !r.is_active || !g || !g.is_active || !grpCount[g.id]) return 0;
-      return (+g.server_fee || 0) / grpCount[g.id];
+      return feeFor(g.id, year) / grpCount[g.id];
     };
     var ledgerRows = [];
     allRows.forEach(function (r) {
       if (r.unmarked || !(r.doc.total > 0)) return;
-      var d = r.doc, share = serverShareOf(d.renewal_id), full = d.total - d.cost - share;
+      var d = r.doc, share = serverShareOf(d.renewal_id, +d.doc_date.slice(0, 4)), full = d.total - d.cost - share;
       (paysBy[d.id] || []).forEach(function (p) {
         var k = Math.min(p.amount / d.total, 1), n = full * k, x = split(n, r.es), sale = d.total * k, cost = (d.cost + share) * k;
         ledgerRows.push({ doc: d, id: r.id, title: r.title, customer: r.customer, custId: r.custId, src: r.src, srcStyle: r.srcStyle, es: r.es,
@@ -3038,17 +3044,22 @@ class Component extends DCLogic {
     var firstIdx = {};
     renewals.forEach(function (r) { if (firstIdx[r.custId] == null || r.gi < firstIdx[r.custId]) firstIdx[r.custId] = r.gi; });
     var custRows = renewals.slice().sort(rtSort === 'cust' ? function (a, b) { return firstIdx[a.custId] - firstIdx[b.custId] || a.gi - b.gi; } : function (a, b) { return a.days - b.days; });
+    var curYear = +todayIso().slice(0, 4);
     var srvEdit = s.srvEdit || null, srvNew = s.srvNew || { name: '', fee: '' };
     var setSrvEdit = function (patch) { self.setState({ srvEdit: Object.assign({}, self.state.srvEdit, patch) }); };
     var setSrvNew = function (patch) { self.setState({ srvNew: Object.assign({}, self.state.srvNew, patch) }); };
-    var saveSrv = function (id, name, fee) {
+    var saveSrv = function (id, name, fee, year) {
       name = (name || '').trim();
-      var f = num(fee);
+      var f = num(fee), y = +year || curYear;
       if (!name) { self.setState({ srvErr: 'Please enter a server name' }); return; }
       if (!(f >= 0)) { self.setState({ srvErr: 'Server fee cannot be negative' }); return; }
       self.act(async function () {
-        if (id) await dbUpdate('renewal_groups', id, { name: name, server_fee: r2(f) });
-        else await dbInsert('renewal_groups', { name: name, server_fee: r2(f), remark: '', is_active: true });
+        var gid = id;
+        if (gid) await dbUpdate('renewal_groups', gid, { name: name });
+        else { var grp = await dbInsert('renewal_groups', { name: name, server_fee: r2(f), remark: '', is_active: true }); gid = grp.id; }
+        var ex = DB.renewal_group_fees.filter(function (x) { return x.group_id === gid && x.year === y; })[0];
+        if (ex) await dbUpdate('renewal_group_fees', ex.id, { fee: r2(f) });
+        else await dbInsert('renewal_group_fees', { group_id: gid, year: y, fee: r2(f) });
         self.setState({ srvEdit: null, srvNew: { name: '', fee: '' }, srvErr: '' });
       }, id ? 'Server updated' : 'Server added');
     };
@@ -3070,7 +3081,7 @@ class Component extends DCLogic {
     var pushServerGroup = function (g, name, fee, rs) {
       var editing = !!g && !!srvEdit && srvEdit.id === g.id;
       var groupKey = g ? String(g.id) : '';
-      var perDomain = (g && rs.length) ? fmt(+g.server_fee / rs.length) : '';
+      var perDomain = (g && rs.length) ? fmt(feeFor(g.id, curYear) / rs.length) : '';
       var allowDrop = function (e) { if (srvDragId != null) e.preventDefault(); };
       var dropHere = function (e) { e.preventDefault(); moveDomain(groupKey); };
       var delEmpty = (g && rs.length === 0) ? function () {
@@ -3078,12 +3089,13 @@ class Component extends DCLogic {
         self.act(async function () { await dbUpdate('renewal_groups', g.id, { is_active: false }); self.setState({ srvEdit: null, srvErr: '' }); }, 'Server deleted');
       } : null;
       serverRows.push({ isHead: !editing, isEdit: editing, isItem: false, dragOver: allowDrop, dropOn: dropHere, canDelete: !!delEmpty, del: delEmpty,
-        serverName: name, title: ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + fee : '') + ' · total fee ' + fmt(rs.reduce(function (a, r) { return a + (+r.fee || 0); }, 0)), item: '', customer: '', due: '', amount: '', cost: '',
-        editName: editing ? srvEdit.name : '', editFee: editing ? srvEdit.fee : '',
-        startEdit: g ? function () { self.setState({ srvEdit: { id: g.id, name: g.name, fee: String(g.server_fee) }, srvErr: '' }); } : null,
+        serverName: name, title: ' · ' + rs.length + ' domains' + (fee ? ' · server fee ' + curYear + ' ' + fee : '') + ' · total fee ' + fmt(rs.reduce(function (a, r) { return a + (+r.fee || 0); }, 0)), item: '', customer: '', due: '', amount: '', cost: '',
+        editName: editing ? srvEdit.name : '', editFee: editing ? srvEdit.fee : '', editYear: editing ? srvEdit.year : '',
+        onEditYear: function (e) { var yy = +e.target.value; setSrvEdit({ year: yy, fee: g ? String(feeFor(g.id, yy)) : '' }); },
+        startEdit: g ? function () { self.setState({ srvEdit: { id: g.id, name: g.name, fee: String(feeFor(g.id, curYear)), year: curYear }, srvErr: '' }); } : null,
         onEditName: function (e) { setSrvEdit({ name: e.target.value }); },
         onEditFee: function (e) { setSrvEdit({ fee: e.target.value }); },
-        save: g ? function () { saveSrv(g.id, self.state.srvEdit.name, self.state.srvEdit.fee); } : null,
+        save: g ? function () { saveSrv(g.id, self.state.srvEdit.name, self.state.srvEdit.fee, self.state.srvEdit.year); } : null,
         cancel: function () { self.setState({ srvEdit: null, srvErr: '' }); } });
       rs.forEach(function (r) {
         serverRows.push({ isHead: false, isEdit: false, isItem: true, title: '', item: r.item, customer: cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0),
@@ -3097,13 +3109,13 @@ class Component extends DCLogic {
     };
     var activeRen = DB.renewals.filter(function (r) { return r.is_active && !r.is_own; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
     DB.renewal_groups.filter(function (g) { return g.is_active; }).sort(function (a, b) { return a.id - b.id; }).forEach(function (g) {
-      pushServerGroup(g, g.name, fmt(g.server_fee), activeRen.filter(function (r) { return r.group_id === g.id; }));
+      pushServerGroup(g, g.name, fmt(feeFor(g.id, curYear)), activeRen.filter(function (r) { return r.group_id === g.id; }));
     });
     var unassigned = activeRen.filter(function (r) { return r.group_id == null; });
     if (unassigned.length) pushServerGroup(null, 'No server', '', unassigned);
     var srvAdd = { name: srvNew.name, fee: srvNew.fee, onName: function (e) { setSrvNew({ name: e.target.value }); }, onFee: function (e) { setSrvNew({ fee: e.target.value }); },
       add: function () { saveSrv(null, self.state.srvNew.name, self.state.srvNew.fee); } };
-    var srvTotal = DB.renewal_groups.filter(function (g) { return g.is_active; }).reduce(function (a, g) { return a + (+g.server_fee || 0); }, 0);
+    var srvTotal = DB.renewal_groups.filter(function (g) { return g.is_active; }).reduce(function (a, g) { return a + feeFor(g.id, curYear); }, 0);
     var asgRaw = s.srvAsg || { id: '', group: '' };
     var setSrvAsg = function (patch) { self.setState({ srvAsg: Object.assign({}, self.state.srvAsg, patch) }); };
     var domainOpts = [{ v: '', label: '— Select domain' }].concat(activeRen.filter(function (r) { return r.group_id == null; }).map(function (r) { return { v: String(r.id), label: r.item + ' · ' + cname(r.customer_id) }; }));
@@ -3312,7 +3324,7 @@ class Component extends DCLogic {
       fund: { exp: fmt(expMonth), in: fmt(t.co), bal: rm(fundBal), style: 'font-family:IBM Plex Mono,monospace;color:' + (fundBal < 0 ? '#9B1C1C' : '#11603F') },
       renewSum: { yCount: ys.n, yTotal: rm(ys.sum), over: ys.over, soon: ys.soon, alertN: alerts.length },
       alerts: alerts, alertsFirst: alerts.slice(0, 9), alertsMore: alerts.slice(9), hasAlertsMore: alerts.length > 9, alertsMoreLabel: 'Show ' + (alerts.length - 9) + ' more',
-      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverRows: serverRows, serverOpts: serverOpts, srvAdd: srvAdd, asg: asgView, domainOpts: domainOpts, srvErr: s.srvErr || '', srvHasErr: !!s.srvErr, rtOwnCost: fmt(ownCost), rtNet: rm(ys.sum - ys.cost - srvTotal), serverFeeTotal: fmt(DB.renewal_groups.filter(function (g) { return g.is_active; }).reduce(function (a, g) { return a + (+g.server_fee || 0); }, 0)), serverFeeCount: DB.renewal_groups.filter(function (g) { return g.is_active; }).length,
+      rtRows: rtRows, rtCount: rtRows.length, rtSortBtns: rtSortBtns, serverRows: serverRows, serverOpts: serverOpts, srvAdd: srvAdd, asg: asgView, domainOpts: domainOpts, srvErr: s.srvErr || '', srvHasErr: !!s.srvErr, rtOwnCost: fmt(ownCost), rtNet: rm(ys.sum - ys.cost - srvTotal), serverFeeTotal: fmt(DB.renewal_groups.filter(function (g) { return g.is_active; }).reduce(function (a, g) { return a + feeFor(g.id, curYear); }, 0)), serverFeeCount: DB.renewal_groups.filter(function (g) { return g.is_active; }).length,
       renewTot: { fee: fmt(ys.sum), cost: fmt(ys.cost), net: fmt(ys.sum - ys.cost - srvTotal), co: fmt(ys.co), b: fmt(ys.b), ba: fmt(ys.ba) },
       custCount: activeCust.length,
       ncFields: ncFields, ncRows: ncRows, saveNew: saveNew, ncErr: s.ncErr, hasNcErr: !!s.ncErr, ncMsg: s.ncMsg, hasNcMsg: !!s.ncMsg,
