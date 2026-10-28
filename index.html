@@ -2733,7 +2733,7 @@ class Component extends DCLogic {
         if (ym > nowYm) break;
         var mrows = rows.filter(function (r) { return r.iso.slice(0, 7) === ym; });
         var mCo = mrows.reduce(function (a, r) { return a + r.v.co; }, 0), mB = mrows.reduce(function (a, r) { return a + r.v.b; }, 0), mBa = mrows.reduce(function (a, r) { return a + r.v.ba; }, 0);
-        var mExp = expenses.filter(function (x) { return x.date.slice(0, 7) === ym && x.cat !== 'Salary' && x.cat !== 'Dividend paid'; }).reduce(function (a, x) { return a + x.amount; }, 0);
+        var mExp = DB.expenses.filter(function (x) { return x.exp_date.slice(0, 7) === ym && x.category !== 'Salary' && x.category !== 'Dividend paid'; }).reduce(function (a, x) { return a + x.amount; }, 0);
         var mPartner = mB + mBa, mFrom = mPartner > 0 ? Math.min(SALARY, Math.max(mCo - mExp, 0)) : SALARY, mShort = SALARY - mFrom;
         out.co += mFrom;
         out.b += mPartner > 0 ? mShort * mB / mPartner : 0;
