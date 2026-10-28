@@ -1694,6 +1694,16 @@ function feeFor(groupId, year) {
   var rows = DB.renewal_group_fees.filter(function (f) { return f.group_id === groupId && f.year <= year; }).sort(function (a, b) { return b.year - a.year; });
   return rows.length ? (+rows[0].fee || 0) : 0;
 }
+// 发票自动关联续费项目：名字出现在发票里就关联；否则该客户只有一个续费项目时关联到它
+function autoRenewalId(custId, texts) {
+  if (!custId) return null;
+  var live = DB.renewals.filter(function (r) { return r.is_active && !r.is_own && r.customer_id === custId; });
+  var hay = texts.join(' ').toLowerCase();
+  var named = live.filter(function (r) { return r.item && hay.indexOf(r.item.trim().toLowerCase()) >= 0; });
+  if (named.length === 1) return named[0].id;
+  if (!named.length && live.length === 1) return live[0].id;
+  return null;
+}
 // stored status values stay as they are in the data; this is only what the screen shows
 var STATUS_EN = { '草稿': 'Draft', '已发出': 'Sent', '已接受': 'Accepted', '已转 Invoice': 'Converted to invoice', '未付款': 'Unpaid', 'Expired': 'Expired' };
 function stEn(x) { return STATUS_EN[x] || x; }
@@ -2012,7 +2022,7 @@ class Component extends DCLogic {
     var no = (ed.no || '').trim() || this.nextNo(ed.kind, ed.date, ed.id);
     var row = { kind: ed.kind, doc_no: no, doc_date: ed.date, customer_id: ed.custId ? +ed.custId : null,
       title: lines.length ? lines[0].desc : '', lines: lines, total: total };
-    if (ed.kind === 'invoice') { row.terms = ed.terms || '30 days'; row.source = ed.source; row.cost = r2(num(ed.cost)); row.renewal_id = ed.renewalId || null; row.from_quote_id = ed.fromQuote || null; }
+    if (ed.kind === 'invoice') { row.terms = ed.terms || '30 days'; row.source = ed.source; row.cost = r2(num(ed.cost)); row.renewal_id = ed.renewalId || autoRenewalId(row.customer_id, [row.title].concat(lines.map(function (l) { return l.desc; }))); row.from_quote_id = ed.fromQuote || null; }
     else { row.status = ed.status || '草稿'; row.valid_until = ed.valid || null; }
     return row;
   }
