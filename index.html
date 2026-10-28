@@ -2746,7 +2746,7 @@ class Component extends DCLogic {
         if (ym > nowYm) break;
         var mrows = rows.filter(function (r) { return r.iso.slice(0, 7) === ym; });
         var mCo = mrows.reduce(function (a, r) { return a + r.v.co; }, 0), mB = mrows.reduce(function (a, r) { return a + r.v.b; }, 0), mBa = mrows.reduce(function (a, r) { return a + r.v.ba; }, 0);
-        var mExp = DB.expenses.filter(function (x) { return x.exp_date.slice(0, 7) === ym && x.category !== 'Salary' && x.category !== 'Dividend paid'; }).reduce(function (a, x) { return a + x.amount; }, 0);
+        var mExp = DB.expenses.filter(function (x) { return x.exp_date.slice(0, 7) === ym && x.category !== 'Salary' && x.category !== 'Dividend paid' && x.category !== 'Server (paid via customer share)'; }).reduce(function (a, x) { return a + x.amount; }, 0);
         var mPartner = mB + mBa, mFrom = mPartner > 0 ? Math.min(SALARY, Math.max(mCo - mExp, 0)) : SALARY, mShort = SALARY - mFrom;
         out.co += mFrom;
         out.b += mPartner > 0 ? mShort * mB / mPartner : 0;
@@ -2780,7 +2780,7 @@ class Component extends DCLogic {
       return { desc: x.desc, cat: x.cat, cust: x.custId ? cname(x.custId) : '—', date: dmy(parseD(x.date)), amount: fmt(x.amount),
         markPaid: function () { self.act(async function () { await dbUpdate('expenses', x.id, { pending_claim: false }); }, 'Marked as paid'); } };
     });
-    var expMonth = expenses.filter(function (x) { return x.date >= monthStart && x.date <= monthEnd && x.cat !== 'Salary' && x.cat !== 'Dividend paid'; }).reduce(function (a, x) { return a + x.amount; }, 0);
+    var expMonth = expenses.filter(function (x) { return x.date >= monthStart && x.date <= monthEnd && x.cat !== 'Salary' && x.cat !== 'Dividend paid' && x.cat !== 'Server (paid via customer share)'; }).reduce(function (a, x) { return a + x.amount; }, 0);
     // 薪水：先从公司留存出（扣完开销后剩下的），不够的部分按 Bernice / Balon 分红比例分摊
     var partner = t.b + t.ba, salAvail = Math.max(t.co - expMonth, 0);
     var fromCo = partner > 0 ? Math.min(SALARY, salAvail) : SALARY, salShort = SALARY - fromCo;
@@ -2790,7 +2790,7 @@ class Component extends DCLogic {
       note: salShort > 0 ? 'Company retained is not enough for salary, shortfall RM ' + fmt(salShort) + ' is deducted from Bernice and Balon pro rata' : 'Salary is paid from company retained; dividends are untouched' };
     var fundBal = t.co - fromCo - expMonth;
 
-    var CATS = ['Gifts', 'Travel / events', 'Hosting / domain / theme', 'Software / subscriptions', 'Equipment / repairs', 'Accounting / bank / registration', 'Outsourcing / design', 'Commission', 'Salary', 'Bonus', 'Dividend paid', 'Other'];
+    var CATS = ['Gifts', 'Travel / events', 'Hosting / domain / theme', 'Software / subscriptions', 'Equipment / repairs', 'Accounting / bank / registration', 'Outsourcing / design', 'Commission', 'Salary', 'Bonus', 'Dividend paid', 'Server (paid via customer share)', 'Other'];
     var CAT_STYLE = { 'Gifts': badge('#F6E3EE', '#8B1D5C'), 'Travel / events': badge('#FCEFC7', '#7A5200'), 'Hosting / domain / theme': badge('#DCE6F7', '#1D4485'), 'Software / subscriptions': badge('#DDF2EA', '#155A48'), 'Equipment / repairs': badge('#EDE7F6', '#4C2C92'), 'Salary': badge('#FBE7DA', '#8A3B0E'), 'Dividend paid': badge('#FBE7DA', '#8A3B0E'), 'Bonus': badge('#FADADA', '#9B1C1C') };
     var ef0 = s.expEdit || s.ef || {};
     var setEf = function (k) { return function (e) { var stateKey = s.expEdit ? 'expEdit' : 'ef'; var d = Object.assign({}, self.state[stateKey]); d[k] = e.target.value; self.setState({ [stateKey]: d, expErr: '' }); }; };
