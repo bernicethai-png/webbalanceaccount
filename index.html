@@ -2817,6 +2817,7 @@ class Component extends DCLogic {
     var eYear = (s.eYear && eYearsAll.indexOf(+s.eYear) >= 0) ? +s.eYear : Y;
     var eFrom = eYear + '-01-01', eTo = eYear + '-12-31';
     var expIn = expenses.filter(function (x) { return x.date >= eFrom && x.date <= eTo; }).sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : b.id - a.id); });
+    var expCatSel = s.expCat || null;
     var expRows = expIn.filter(function (x) { return !expCatSel || x.cat === expCatSel; }).map(function (x) {
       return { date: dmy(parseD(x.date)), desc: x.desc, cat: x.cat, catStyle: CAT_STYLE[x.cat] || MUTED, cust: x.custId ? cname(x.custId) : '—', amount: fmt(x.amount),
         isConfirm: s.expDel === x.id, notConfirm: s.expDel !== x.id,
@@ -2825,7 +2826,6 @@ class Component extends DCLogic {
         cancel: function () { self.setState({ expDel: null }); },
         doDel: function () { self.act(async function () { await dbDelete('expenses', x.id); self.setState({ expDel: null }); }, 'Deleted'); } };
     });
-    var expCatSel = s.expCat || null;
     var expByCat = CATS.map(function (c) {
       var v = expIn.filter(function (x) { return x.cat === c; }).reduce(function (a, x) { return a + x.amount; }, 0);
       var on = expCatSel === c;
