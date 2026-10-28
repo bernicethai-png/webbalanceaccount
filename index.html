@@ -2691,7 +2691,7 @@ class Component extends DCLogic {
     var grpPct = {}, grpFree = {};
     DB.renewals.forEach(function (r) {
       renById[r.id] = r;
-      if (!r.is_active || r.is_own || r.group_id == null) return;
+      if (!r.is_active || r.group_id == null) return;
       if (r.server_share_pct != null) grpPct[r.group_id] = (grpPct[r.group_id] || 0) + (+r.server_share_pct);
       else grpFree[r.group_id] = (grpFree[r.group_id] || 0) + 1;
     });
@@ -2703,6 +2703,10 @@ class Component extends DCLogic {
       if (r.server_share_pct != null) return fee * (+r.server_share_pct) / 100;
       if (!grpFree[g.id]) return 0;
       return fee * Math.max(100 - (grpPct[g.id] || 0), 0) / 100 / grpFree[g.id];
+    };
+    // 公司自己的域名那一份服务器费用（由公司承担，从公司留存扣）
+    var ownServerCost = function (year) {
+      return DB.renewals.filter(function (r) { return r.is_active && r.is_own && r.group_id != null; }).reduce(function (a, r) { return a + serverShareOf(r.id, year); }, 0);
     };
     var ledgerRows = [];
     allRows.forEach(function (r) {
@@ -2757,6 +2761,7 @@ class Component extends DCLogic {
     var pt = sumOf(plist);
     var pSal = salaryDeduct(pYear, plist);
     pt.co -= pSal.co; pt.b -= pSal.b; pt.ba -= pSal.ba;
+    pt.co -= ownServerCost(pYear);
     var pYears = pYearsAll.map(function (y) { return { v: String(y), label: String(y) + ' ' }; });
     var kbox = function (bd, bg) { return 'background:' + bg + ';border:1px solid ' + bd + ';border-radius:10px;padding:14px 16px'; };
     var klab = function (c) { return 'font-size:13px;font-weight:600;color:' + c; };
@@ -2786,9 +2791,10 @@ class Component extends DCLogic {
     var fromCo = partner > 0 ? Math.min(SALARY, salAvail) : SALARY, salShort = SALARY - fromCo;
     var bDed = partner > 0 ? salShort * t.b / partner : 0, baDed = partner > 0 ? salShort - bDed : 0;
     var sal = { bDed: fmt(bDed), baDed: fmt(baDed), fromCo: fmt(fromCo), bFinal: rm(t.b - bDed), baFinal: rm(t.ba - baDed),
-      bTake: rm(t.b - bDed + SALARY), coFinal: rm(t.co - fromCo - expMonth),
+      bTake: rm(t.b - bDed + SALARY), coFinal: rm(t.co - fromCo - expMonth - ownMonth),
       note: salShort > 0 ? 'Company retained is not enough for salary, shortfall RM ' + fmt(salShort) + ' is deducted from Bernice and Balon pro rata' : 'Salary is paid from company retained; dividends are untouched' };
-    var fundBal = t.co - fromCo - expMonth;
+    var ownMonth = ownServerCost(+String(monthStart).slice(0, 4)) / 12;
+    var fundBal = t.co - fromCo - expMonth - ownMonth;
 
     var CATS = ['Gifts', 'Travel / events', 'Hosting / domain / theme', 'Software / subscriptions', 'Equipment / repairs', 'Accounting / bank / registration', 'Outsourcing / design', 'Commission', 'Salary', 'Bonus', 'Dividend paid', 'Server (paid via customer share)', 'Other'];
     var CAT_STYLE = { 'Gifts': badge('#F6E3EE', '#8B1D5C'), 'Travel / events': badge('#FCEFC7', '#7A5200'), 'Hosting / domain / theme': badge('#DCE6F7', '#1D4485'), 'Software / subscriptions': badge('#DDF2EA', '#155A48'), 'Equipment / repairs': badge('#EDE7F6', '#4C2C92'), 'Salary': badge('#FBE7DA', '#8A3B0E'), 'Dividend paid': badge('#FBE7DA', '#8A3B0E'), 'Bonus': badge('#FADADA', '#9B1C1C') };
@@ -3044,6 +3050,7 @@ class Component extends DCLogic {
     var divYearOpts = divYearsAll.map(function (y) { return { v: String(y), label: String(y) + ' ' }; });
     var divYearRows = ledgerRows.filter(function (r) { return +r.iso.slice(0, 4) === divYear; });
     var divSal = salaryDeduct(divYear, divYearRows);
+    divSal.co += ownServerCost(divYear);
     var divAllProjects = divYearRows.map(function (p) {
       return { date: p.date, inv: p.inv, open: p.open, title: p.title, customer: p.customer, src: p.src, srcStyle: p.srcStyle, net: p.net, co: fmt(p.v.co), bernice: fmt(p.v.b), balon: fmt(p.v.ba) };
     });
