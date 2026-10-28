@@ -2727,9 +2727,14 @@ class Component extends DCLogic {
         markPaid: function () { self.act(async function () { await dbUpdate('expenses', x.id, { pending_claim: false }); }, 'Marked as paid'); } };
     });
     var expMonth = expenses.filter(function (x) { return x.date >= monthStart && x.date <= monthEnd && x.cat !== 'Salary' && x.cat !== 'Dividend paid'; }).reduce(function (a, x) { return a + x.amount; }, 0);
-    var sal = { bDed: fmt(0), baDed: fmt(0), fromCo: fmt(SALARY), bFinal: rm(t.b), baFinal: rm(t.ba),
-      bTake: rm(t.b + SALARY), coFinal: rm(t.co - SALARY - expMonth), note: 'Bernice salary RM ' + fmt(SALARY) + ' is paid from company retained and does not affect dividends' };
-    var fundBal = t.co - SALARY - expMonth;
+    // 薪水：先从公司留存出（扣完开销后剩下的），不够的部分按 Bernice / Balon 分红比例分摊
+    var partner = t.b + t.ba, salAvail = Math.max(t.co - expMonth, 0);
+    var fromCo = partner > 0 ? Math.min(SALARY, salAvail) : SALARY, salShort = SALARY - fromCo;
+    var bDed = partner > 0 ? salShort * t.b / partner : 0, baDed = partner > 0 ? salShort - bDed : 0;
+    var sal = { bDed: fmt(bDed), baDed: fmt(baDed), fromCo: fmt(fromCo), bFinal: rm(t.b - bDed), baFinal: rm(t.ba - baDed),
+      bTake: rm(t.b - bDed + SALARY), coFinal: rm(t.co - fromCo - expMonth),
+      note: salShort > 0 ? 'Company retained is not enough for salary, shortfall RM ' + fmt(salShort) + ' is deducted from Bernice and Balon pro rata' : 'Salary is paid from company retained; dividends are untouched' };
+    var fundBal = t.co - fromCo - expMonth;
 
     var CATS = ['Gifts', 'Travel / events', 'Hosting / domain / theme', 'Software / subscriptions', 'Equipment / repairs', 'Accounting / bank / registration', 'Outsourcing / design', 'Commission', 'Salary', 'Bonus', 'Dividend paid', 'Other'];
     var CAT_STYLE = { 'Gifts': badge('#F6E3EE', '#8B1D5C'), 'Travel / events': badge('#FCEFC7', '#7A5200'), 'Hosting / domain / theme': badge('#DCE6F7', '#1D4485'), 'Software / subscriptions': badge('#DDF2EA', '#155A48'), 'Equipment / repairs': badge('#EDE7F6', '#4C2C92'), 'Salary': badge('#FBE7DA', '#8A3B0E'), 'Dividend paid': badge('#FBE7DA', '#8A3B0E'), 'Bonus': badge('#FADADA', '#9B1C1C') };
@@ -2977,11 +2982,24 @@ class Component extends DCLogic {
     var divYear = (s.divYear && divYearsAll.indexOf(+s.divYear) >= 0) ? +s.divYear : Y;
     var divYearOpts = divYearsAll.map(function (y) { return { v: String(y), label: String(y) + ' ' }; });
     var divYearRows = ledgerRows.filter(function (r) { return +r.iso.slice(0, 4) === divYear; });
+    // 薪水按月计算：每月先从公司留存出，不够的部分按 Bernice / Balon 分红比例扣（和 Overview 同一规则）
+    var divSal = { co: 0, b: 0, ba: 0 }, nowYm = todayIso().slice(0, 7);
+    for (var sm = 1; sm <= 12; sm++) {
+      var ym = divYear + '-' + (sm < 10 ? '0' : '') + sm;
+      if (ym > nowYm) break;
+      var mrows = divYearRows.filter(function (r) { return r.iso.slice(0, 7) === ym; });
+      var mCo = mrows.reduce(function (a, r) { return a + r.v.co; }, 0), mB = mrows.reduce(function (a, r) { return a + r.v.b; }, 0), mBa = mrows.reduce(function (a, r) { return a + r.v.ba; }, 0);
+      var mExp = expenses.filter(function (x) { return x.date.slice(0, 7) === ym && x.cat !== 'Salary' && x.cat !== 'Dividend paid'; }).reduce(function (a, x) { return a + x.amount; }, 0);
+      var mPartner = mB + mBa, mFrom = mPartner > 0 ? Math.min(SALARY, Math.max(mCo - mExp, 0)) : SALARY, mShort = SALARY - mFrom;
+      divSal.co += mFrom;
+      divSal.b += mPartner > 0 ? mShort * mB / mPartner : 0;
+      divSal.ba += mPartner > 0 ? mShort * mBa / mPartner : 0;
+    }
     var divAllProjects = divYearRows.map(function (p) {
       return { date: p.date, inv: p.inv, open: p.open, title: p.title, customer: p.customer, src: p.src, srcStyle: p.srcStyle, net: p.net, co: fmt(p.v.co), bernice: fmt(p.v.b), balon: fmt(p.v.ba) };
     });
     var divAllTotal = divYearRows.reduce(function (a, p) { return a + p.raw.net; }, 0);
-    var divAllTotals = { net: fmt(divAllTotal), co: fmt(divYearRows.reduce(function (a, p) { return a + p.v.co; }, 0)), bernice: fmt(divYearRows.reduce(function (a, p) { return a + p.v.b; }, 0)), balon: fmt(divYearRows.reduce(function (a, p) { return a + p.v.ba; }, 0)) };
+    var divAllTotals = { net: fmt(divAllTotal), co: fmt(divYearRows.reduce(function (a, p) { return a + p.v.co; }, 0) - divSal.co), bernice: fmt(divYearRows.reduce(function (a, p) { return a + p.v.b; }, 0) - divSal.b), balon: fmt(divYearRows.reduce(function (a, p) { return a + p.v.ba; }, 0) - divSal.ba) };
     var divBtns = ['all', 'co', 'b', 'ba'].map(function (k) {
       var on = who === k;
       return { label: WHO[k], pick: function () { self.setState({ divWho: k }); },
@@ -2991,7 +3009,7 @@ class Component extends DCLogic {
       return { date: p.date, inv: p.inv, open: p.open, title: p.title, customer: p.customer, src: p.src, srcStyle: p.srcStyle, net: p.net, val: fmt(p.v[who]), how: p.how[who] };
     });
     var divOneRows = divRows;
-    var divOneTotal = who === 'all' ? '' : fmt(divYearRows.reduce(function (a, p) { return a + p.v[who]; }, 0));
+    var divOneTotal = who === 'all' ? '' : fmt(divYearRows.reduce(function (a, p) { return a + p.v[who]; }, 0) - (who === 'co' ? divSal.co : (who === 'b' ? divSal.b : divSal.ba)));
 
     // ---------- renewal ----------
     var today = new Date(); today.setHours(0, 0, 0, 0);
