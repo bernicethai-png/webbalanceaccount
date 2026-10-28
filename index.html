@@ -3365,9 +3365,6 @@ class Component extends DCLogic {
       goRenew: function () { self.setState({ tab: 'renew' }); },
       unpaidInvoices: unpaidInvoices, unpaidFirst: unpaidInvoices.slice(0, 9), unpaidMore: unpaidInvoices.slice(9), hasUnpaidMore: unpaidInvoices.length > 9, unpaidMoreLabel: 'Show ' + (unpaidInvoices.length - 9) + ' more', unpaidCount: unpaidCount, unpaidEmpty: unpaidEmpty,
       kpis: [
-        { label: 'Revenue this month', value: rm(t.sale), sub: projects.length + ' invoices' },
-        { label: 'Direct cost', value: rm(t.cost), sub: 'Outsourcing, hardware, hosting' },
-        { label: 'Net profit', value: rm(t.net), sub: t.sale > 0 ? 'Margin ' + (t.net / t.sale * 100).toFixed(1) + '%' : 'No invoices this month yet' },
         { label: 'Outstanding', value: rm(allOwing), sub: owingN + ' invoices not fully paid' },
         { label: 'Pending claim', value: rm(pendingSum), sub: pendingExp.length + ' expenses waiting to be paid' }
       ],
