@@ -2821,7 +2821,7 @@ class Component extends DCLogic {
     var expRows = expIn.filter(function (x) { return !expCatSel || x.cat === expCatSel; }).map(function (x) {
       return { date: dmy(parseD(x.date)), desc: x.desc, cat: x.cat, catStyle: CAT_STYLE[x.cat] || MUTED, cust: x.custId ? cname(x.custId) : '—', amount: fmt(x.amount),
         isConfirm: s.expDel === x.id, notConfirm: s.expDel !== x.id,
-        onEdit: function () { self.setState({ expEdit: { id: x.id, date: x.date, desc: x.desc, cat: x.cat, amount: x.amount, custId: x.custId, pending: x.pending } }); },
+        onEdit: function () { self.setState({ expFormOpen: true, expErr: '', expEdit: { id: x.id, date: x.date, desc: x.desc, cat: x.cat, amount: x.amount, custId: x.custId, pending: x.pending } }); window.scrollTo({ top: 0, behavior: 'smooth' }); },
         onDel: function () { self.setState({ expDel: x.id }); },
         cancel: function () { self.setState({ expDel: null }); },
         doDel: function () { self.act(async function () { await dbDelete('expenses', x.id); self.setState({ expDel: null }); }, 'Deleted'); } };
