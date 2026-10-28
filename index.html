@@ -3148,7 +3148,7 @@ class Component extends DCLogic {
         save: g ? function () { saveSrv(g.id, self.state.srvEdit.name, self.state.srvEdit.fee, self.state.srvEdit.year); } : null,
         cancel: function () { self.setState({ srvEdit: null, srvErr: '' }); } });
       rs.forEach(function (r) {
-        serverRows.push({ isHead: false, isEdit: false, isItem: true, title: '', item: r.item, customer: cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0),
+        serverRows.push({ isHead: false, isEdit: false, isItem: true, title: '', item: r.item, customer: r.is_own ? 'Company use' : cname(r.customer_id), due: r.due_date ? dmy(parseD(r.due_date)) : '—', amount: fmt(r.fee), cost: fmt(r.cost || 0),
           hasLink: !!r.customer_id, noLink: !r.customer_id,
           openCust: function () { self.setState({ tab: 'cust', custDetail: r.customer_id, backTab: 'renew' }); },
           serverShare: fmt(serverShareOf(r.id, curYear)), dragOver: allowDrop, dropOn: dropHere, daysTxt: daysLeft(r.due_date).txt, daysStyle: daysLeft(r.due_date).style,
@@ -3158,8 +3158,9 @@ class Component extends DCLogic {
       });
     };
     var activeRen = DB.renewals.filter(function (r) { return r.is_active && !r.is_own; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
+    var srvRen = DB.renewals.filter(function (r) { return r.is_active && r.group_id != null; }).sort(function (a, b) { return (a.due_date || '9999') < (b.due_date || '9999') ? -1 : 1; });
     DB.renewal_groups.filter(function (g) { return g.is_active; }).sort(function (a, b) { return a.id - b.id; }).forEach(function (g) {
-      pushServerGroup(g, g.name, fmt(feeFor(g.id, curYear)), activeRen.filter(function (r) { return r.group_id === g.id; }));
+      pushServerGroup(g, g.name, fmt(feeFor(g.id, curYear)), srvRen.filter(function (r) { return r.group_id === g.id; }));
     });
     var unassigned = activeRen.filter(function (r) { return r.group_id == null; });
     if (unassigned.length) pushServerGroup(null, 'No server', '', unassigned);
