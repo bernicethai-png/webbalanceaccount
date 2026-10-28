@@ -389,6 +389,9 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                     <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Domain Fee (MYR)
                       <input type="number" value="{{r.cost}}" onChange="{{r.onCost}}" placeholder="70" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono',monospace">
                     </label>
+                    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Server share (%)
+                      <input type="number" value="{{r.share_pct}}" onChange="{{r.onSharePct}}" placeholder="blank = split evenly" style="padding: 10px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font-family: 'IBM Plex Mono',monospace">
+                    </label>
                     <template data-sc="if" value="{{r.showDue}}" hint-placeholder-val="{{ false }}">
                       <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Due date
                         <input type="date" value="{{r.due}}" onChange="{{r.onDue}}" style="padding: 9px 12px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF">
@@ -2904,8 +2907,8 @@ class Component extends DCLogic {
     var custCode = function (id) { return 'C' + String(id).padStart(3, '0'); };
     var startEdit = function (id) {
       var c = custById[id];
-      var rows = (renByCust[id] || []).map(function (r) { return { id: r.id, item: r.item, fee: String(r.fee), cost: r.cost != null ? String(r.cost) : '', server_fee: r.server_fee != null ? String(r.server_fee) : '', due: r.due_date, remark: r.remark || '', type: r.renewal_type || 'yearly' }; });
-      if (!rows.length) rows.push({ id: null, item: '', fee: '', cost: '', server_fee: '', due: '', remark: '', type: 'yearly' });
+      var rows = (renByCust[id] || []).map(function (r) { return { id: r.id, item: r.item, fee: String(r.fee), cost: r.cost != null ? String(r.cost) : '', server_fee: r.server_fee != null ? String(r.server_fee) : '', share_pct: r.server_share_pct != null ? String(r.server_share_pct) : '', due: r.due_date, remark: r.remark || '', type: r.renewal_type || 'yearly' }; });
+      if (!rows.length) rows.push({ id: null, item: '', fee: '', cost: '', server_fee: '', share_pct: '', due: '', remark: '', type: 'yearly' });
       return { editId: id, draft: { name: c.name, alias: c.alias || c.ssm || '', addr: c.addr, phone: c.phone, email: c.email }, draftRen: rows, draftRemoved: [], editErr: '' };
     };
     var customers = activeCust.map(function (c) {
@@ -2965,7 +2968,7 @@ class Component extends DCLogic {
         for (var j = 0; j < st.draftRen.length; j++) {
           var r = st.draftRen[j], filled = r.item.trim() && (r.type !== 'yearly' || r.due);
           var remark = (r.remark || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean).join('\n') || '';
-          var row = { item: r.item.trim(), due_date: (r.type === 'yearly' ? r.due : null), fee: r2(num(r.fee)), cost: r2(num(r.cost)), server_fee: r2(num(r.server_fee)), remark: remark, renewal_type: r.type };
+          var row = { item: r.item.trim(), due_date: (r.type === 'yearly' ? r.due : null), fee: r2(num(r.fee)), cost: r2(num(r.cost)), server_fee: r2(num(r.server_fee)), server_share_pct: (r.share_pct === '' || r.share_pct == null) ? null : num(r.share_pct), remark: remark, renewal_type: r.type };
           if (r.id) { if (filled) await dbUpdate('renewals', r.id, row); else await dbUpdate('renewals', r.id, { is_active: false }); }
           else if (filled) await dbInsert('renewals', Object.assign({ customer_id: id }, row));
         }
@@ -3382,7 +3385,7 @@ class Component extends DCLogic {
           return { text: t, onChange: function (e) { setRemarks(function (ls) { ls[i] = e.target.value; return ls; })(); },
             removeLine: setRemarks(function (ls) { return ls.filter(function (_, j) { return j !== i; }); }) };
         });
-        return { n: k + 1, item: r.item, fee: r.fee, cost: r.cost, server_fee: r.server_fee, due: r.due, remark: r.remark, remarkRows: remarkRows, firstRemarkRows: remarkRows.slice(0, 1), restRemarkRows: remarkRows.slice(1), addRemarkLine: setRemarks(function (ls) { return ls.concat(['']); }), type: type, showDue: type === 'yearly', isNew: !r.id, onItem: setF('item'), onFee: setF('fee'), onCost: setF('cost'), onServerFee: setF('server_fee'), onDue: setF('due'), onRemark: setF('remark'), onType: setF('type'),
+        return { n: k + 1, item: r.item, fee: r.fee, cost: r.cost, server_fee: r.server_fee, due: r.due, remark: r.remark, remarkRows: remarkRows, firstRemarkRows: remarkRows.slice(0, 1), restRemarkRows: remarkRows.slice(1), addRemarkLine: setRemarks(function (ls) { return ls.concat(['']); }), type: type, showDue: type === 'yearly', isNew: !r.id, onItem: setF('item'), onFee: setF('fee'), onCost: setF('cost'), onServerFee: setF('server_fee'), share_pct: r.share_pct, onSharePct: setF('share_pct'), onDue: setF('due'), onRemark: setF('remark'), onType: setF('type'),
           remove: function () { var st = self.state; self.setState({ draftRen: st.draftRen.filter(function (_, j) { return j !== k; }), draftRemoved: r.id ? st.draftRemoved.concat([r.id]) : st.draftRemoved }); } };
       }),
       addEditRow: function () { self.setState({ draftRen: self.state.draftRen.concat([{ id: null, item: '', fee: '', cost: '', due: '', remark: '', type: 'yearly' }]) }); },
