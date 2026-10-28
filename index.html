@@ -1107,6 +1107,13 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                 <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #374151">Direct cost (MYR)
                   <input type="number" min="0" step="any" value="{{ed.cost}}" onChange="{{ed.onCost}}" placeholder="0.00" style="padding: 9px 10px; border: 1px solid #D1D5DB; border-radius: 6px; width: 140px; font-family: 'IBM Plex Mono',monospace">
                 </label>
+                <template data-sc="if" value="{{ed.showRenWarn}}" hint-placeholder-val="{{ false }}">
+                  <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #9B1C1C; background: #FDECEC; padding: 8px 10px; border-radius: 6px; max-width: 380px">⚠ Not linked to a renewal item, so the server fee will not be deducted. Choose the renewal item:
+                    <select value="{{ed.renId}}" onChange="{{ed.onRenId}}" style="padding: 8px 10px; border: 1px solid #D1D5DB; border-radius: 6px; background: #FFFFFF; font: inherit">
+                      <template data-sc="for" list="{{ed.renOpts}}" as="o" hint-placeholder-count="4"><option value="{{o.v}}">{{o.label}}</option></template>
+                    </select>
+                  </label>
+                </template>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; padding-bottom: 9px">
                   <span>Net profit <strong style="font-family: 'IBM Plex Mono',monospace">{{ed.net}}</strong></span>
                   <span style="color: #155A48">Company <strong style="font-family: 'IBM Plex Mono',monospace">{{ed.co}}</strong></span>
@@ -3199,7 +3206,15 @@ class Component extends DCLogic {
     var edPaid = E.id ? (paidBy[E.id] || 0) : 0, edPs = payState(edSaved ? edSaved.total : edTotal, edPaid);
     var dirty = edSaved && (r2(edSaved.total) !== r2(edTotal));
     var edOwing = (edSaved && edKind === 'invoice') ? Math.max(edSaved.total - (paidBy[edSaved.id] || 0), 0) : 0;
+    var edTexts = (E.lines || []).map(function (l) { return l.desc || ''; });
+    var edLinkId = E.renewalId || (edKind === 'invoice' ? autoRenewalId(E.custId ? +E.custId : null, edTexts) : null);
+    var edRenCands = (edKind === 'invoice' && edCust) ? (renByCust[edCust.id] || []) : [];
+    var showRenWarn = edKind === 'invoice' && num(E.cost) > 0 && !edLinkId;
+    var renOpts = [{ v: '', label: '— Choose renewal item' }].concat(edRenCands.map(function (r) { return { v: String(r.id), label: r.item }; }));
+    var renId = E.renewalId != null ? String(E.renewalId) : '';
     var ed = {
+      showRenWarn: showRenWarn, renOpts: renOpts, renId: renId,
+      onRenId: function (e) { self.setEd(edKind, { renewalId: e.target.value ? +e.target.value : null }); },
       isInvoice: edKind === 'invoice', isQuote: edKind === 'quote', kindLabel: edKind === 'quote' ? 'QUOTATION' : 'INVOICE', kindWord: edKind === 'quote' ? 'Quotation' : 'Invoice',
       noLabel: edKind === 'quote' ? 'QUOTATION #' : 'INVOICE #', toLabel: edKind === 'quote' ? 'QUOTE TO :' : 'BILL TO :',
       title: (E.id ? 'Edit ' : 'New ') + (edKind === 'quote' ? 'Quotation' : 'Invoice') + (E.id ? ' · ' + E.no : ''),
