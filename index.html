@@ -3260,9 +3260,10 @@ class Component extends DCLogic {
           var type = r.renewal_type || 'yearly';
           if (type === 'monthly') {
             // monthly invoice: item name as a header, sub-items indented underneath (filled in by hand), then the billing period
-            var now = new Date(), month = now.getMonth() + 1, year = now.getFullYear();
+            // period follows the invoice date (not today), so a November invoice always reads November
+            var inv = parseD(cur.date || todayIso()), month = inv.getMonth() + 1, year = inv.getFullYear();
             var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-            var lastDay = new Date(year, month, 0).getDate(), mon = monthNames[now.getMonth()];
+            var lastDay = new Date(year, month, 0).getDate(), mon = monthNames[inv.getMonth()];
             // remark lines are the sub-items: "name | qty | price" (a line without prices is just a description)
             var subs = (r.remark || '').split('\n').map(function (t) { return t.trim(); }).filter(Boolean);
             rows.push({ desc: r.item, qty: '', price: '', header: true });
