@@ -65,7 +65,10 @@ async function renderInvoicePdf(doc, cust) {
 // ---------- Supabase (service role, server-side only) ----------
 function sbHeaders() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return { apikey: key, Authorization: 'Bearer ' + key };
+  const headers = { apikey: key };
+  // Legacy service_role keys are JWTs and also go in Authorization; new sb_secret_ keys are not JWTs.
+  if (key && key.startsWith('eyJ')) headers.Authorization = 'Bearer ' + key;
+  return headers;
 }
 async function sbOne(table, query) {
   const r = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?' + query, { headers: sbHeaders() });
