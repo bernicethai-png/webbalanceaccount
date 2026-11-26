@@ -2755,7 +2755,7 @@ class Component extends DCLogic {
       (paysBy[d.id] || []).forEach(function (p) {
         var k = Math.min(p.amount / d.total, 1), n = full * k, x = split(n, r.es), sale = d.total * k, cost = (d.cost + share) * k;
         ledgerRows.push({ doc: d, id: r.id, title: r.title, customer: r.customer, custId: r.custId, src: r.src, srcStyle: r.srcStyle, es: r.es,
-          iso: p.pay_date || d.doc_date, date: dmy(parseD(p.pay_date || d.doc_date)), inv: r.inv, open: r.open, pay: r.pay, payStyle: r.payStyle,
+          iso: p.pay_date || d.doc_date, date: dmy(parseD(p.pay_date || d.doc_date)), inv: r.inv, open: r.open, href: r.href, pay: r.pay, payStyle: r.payStyle,
           sale: fmt(sale), cost: fmt(cost), net: fmt(n), co: fmt(x.co), bernice: fmt(x.b), balon: fmt(x.ba), paid: fmt(sale), owing: fmt(0),
           raw: { sale: sale, cost: cost, net: n, paid: sale }, v: { co: x.co, b: x.b, ba: x.ba }, how: howOf(r.es, n) });
       });
