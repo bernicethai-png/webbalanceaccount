@@ -90,9 +90,9 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
     <nav aria-label="Menu" style="display: flex; flex-direction: column; gap: 2px; border-top: 3px solid #7BCAAC; padding-top: 14px">
       <template data-sc="for" list="{{tabs}}" as="t" hint-placeholder-count="12">
         <template data-sc="if" value="{{t.isLink}}" hint-placeholder-val="{{ false }}">
-          <button type="button" onClick="{{t.go}}" aria-current="{{t.current}}" style="{{t.style}}">
+          <a href="{{t.href}}" onClick="{{t.go}}" aria-current="{{t.current}}" style="{{t.style}}">
             <span style="{{t.dot}}"></span>{{t.label}}
-          </button>
+          </a>
         </template>
         <template data-sc="if" value="{{t.isGroup}}" hint-placeholder-val="{{ false }}">
           <button type="button" onClick="{{t.toggle}}" style="{{t.style}}">
@@ -1891,6 +1891,18 @@ class Component extends DCLogic {
   // ---------- Sign in / 载入 ----------
   componentDidMount() {
     var self = this;
+    // 地址栏 #/页面名 → 打开对应页面（用于新标签页 / 书签 / 前进后退）
+    var PAGE_IDS = ['dash', 'txn', 'exp', 'renew', 'cust', 'proj', 'div', 'quo', 'quoList', 'inv', 'invDl', 'staff', 'pslip'];
+    var pageFromHash = function () {
+      var t = (location.hash || '').replace(/^#\/?/, '');
+      return PAGE_IDS.indexOf(t) >= 0 ? t : null;
+    };
+    var initTab = pageFromHash();
+    if (initTab) this.setState({ tab: initTab });
+    window.addEventListener('popstate', function () {
+      var t = pageFromHash();
+      if (t) self.setState({ tab: t, custDetail: null, backTab: null });
+    });
     if (!window.supabase || !window.WB_CONFIG) { this.setState({ gate: 'error', fatal: 'Config is missing Supabase details' }); return; }
     SB = window.supabase.createClient(WB_CONFIG.url, WB_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     SB.auth.onAuthStateChange(function (event, session) {
@@ -2591,6 +2603,15 @@ class Component extends DCLogic {
       ] }
     ];
     var expandedGroups = s.expandedGroups || { txn: false, profit: false, quo: false, inv: false, pay: false };
+    // 左键：在应用内切换页面（不刷新）；右键 / Ctrl·Cmd+点击 / 中键：交给浏览器，在新标签页打开 #/页面
+    var navGo = function (t) {
+      return function (e) {
+        if (e && (e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) return;
+        if (e && e.preventDefault) e.preventDefault();
+        self.setState({ tab: t, custDetail: null, backTab: null });
+        try { history.pushState(null, '', '#/' + t); } catch (x) {}
+      };
+    };
     var tabs = [];
     for (var mi = 0; mi < tabMenu.length; mi++) {
       (function(item) {
@@ -2614,10 +2635,11 @@ class Component extends DCLogic {
                 label: sub.label,
                 isGroup: false,
                 isLink: true,
-                go: (function(t) { return function () { self.setState({ tab: t, custDetail: null, backTab: null }); }; })(sub.tab),
+                href: '#/' + sub.tab,
+                go: navGo(sub.tab),
                 current: subOn ? 'page' : 'false',
                 dot: 'display:inline-block;width:6px;height:6px;border-radius:3px;margin-right:10px;vertical-align:2px;background:' + (subOn ? '#1E7A62' : 'transparent'),
-                style: 'display:block;width:100%;text-align:left;border:0;border-radius:6px;font:inherit;cursor:pointer;padding:8px 12px 8px 30px;font-size:13px;' + (subOn ? 'background:#DDF2EA;color:#155A48;font-weight:600' : 'background:transparent;color:#374151')
+                style: 'display:block;width:100%;box-sizing:border-box;text-align:left;border:0;border-radius:6px;font:inherit;text-decoration:none;cursor:pointer;padding:8px 12px 8px 30px;font-size:13px;' + (subOn ? 'background:#DDF2EA;color:#155A48;font-weight:600' : 'background:transparent;color:#374151')
               });
             });
           }
@@ -2627,10 +2649,11 @@ class Component extends DCLogic {
             label: item.label,
             isGroup: false,
             isLink: true,
-            go: (function(t) { return function () { self.setState({ tab: t, custDetail: null, backTab: null }); }; })(item.tab),
+            href: '#/' + item.tab,
+            go: navGo(item.tab),
             current: on ? 'page' : 'false',
             dot: 'display:inline-block;width:6px;height:6px;border-radius:3px;margin-right:10px;vertical-align:2px;background:' + (on ? '#1E7A62' : 'transparent'),
-            style: 'display:block;width:100%;text-align:left;border:0;border-radius:6px;font:inherit;cursor:pointer;padding:11px 12px;font-size:14px;' + (on ? 'background:#DDF2EA;color:#155A48;font-weight:600' : 'background:transparent;color:#374151')
+            style: 'display:block;width:100%;box-sizing:border-box;text-align:left;border:0;border-radius:6px;font:inherit;text-decoration:none;cursor:pointer;padding:11px 12px;font-size:14px;' + (on ? 'background:#DDF2EA;color:#155A48;font-weight:600' : 'background:transparent;color:#374151')
           });
         }
       })(tabMenu[mi]);
