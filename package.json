@@ -1,0 +1,10 @@
+{
+  "name": "webbalanceaccount",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Webbalance 账务系统：静态网站 + 发票归档 serverless 函数（api/archive-invoice.js）",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@napi-rs/canvas": "0.1.80"
+  }
+}

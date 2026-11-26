@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "api/archive-invoice.js": {
+      "includeFiles": "{logo.png,fonts/**}",
+      "maxDuration": 30
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
