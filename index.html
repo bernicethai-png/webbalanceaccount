@@ -684,7 +684,7 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                   <template data-sc="for" list="{{divAllProjects}}" as="p" hint-placeholder-count="4">
                     <tr>
                       <td>{{p.date}}</td>
-                      <td><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 13px; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{p.inv}}</button></td>
+                      <td><a href="{{p.href}}" onClick="{{p.open}}" style="font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 13px; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{p.inv}}</a></td>
                       <td style="white-space: normal; min-width: 200px"><div style="font-weight: 500">{{p.title}}</div><div style="font-size: 12px; color: #6B7280">{{p.customer}}</div></td>
                       <td><span style="{{p.srcStyle}}">{{p.src}}</span></td>
                       <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.net}}</td>
@@ -712,7 +712,7 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                   <template data-sc="for" list="{{divOneRows}}" as="p" hint-placeholder-count="4">
                     <tr>
                       <td>{{p.date}}</td>
-                      <td><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 13px; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{p.inv}}</button></td>
+                      <td><a href="{{p.href}}" onClick="{{p.open}}" style="font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 13px; color: #1E7A62; text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{p.inv}}</a></td>
                       <td style="white-space: normal; min-width: 200px"><div style="font-weight: 500">{{p.title}}</div><div style="font-size: 12px; color: #6B7280">{{p.customer}}</div></td>
                       <td><span style="{{p.srcStyle}}">{{p.src}}</span></td>
                       <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.net}}</td>
@@ -773,7 +773,7 @@ td{padding:12px;border-bottom:1px solid #EEF0F2;font-size:14px;white-space:nowra
                   <template data-sc="for" list="{{plist}}" as="p" hint-placeholder-count="6">
                     <tr>
                       <td>{{p.date}}</td>
-                      <td style="white-space: normal; min-width: 200px"><div style="font-weight: 500"><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-weight: 500; color: #000; text-decoration: underline; cursor: pointer; text-align: left">{{p.title}}</button></div><div style="font-size: 11px; color: #6B7280; margin-top: 2px">{{p.customer}}</div><div style="font-size: 11px; margin-top: 4px"><button type="button" onClick="{{p.open}}" style="padding: 0; border: 0; background: none; font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 11px; color: #1E7A62; text-decoration: underline; cursor: pointer">{{p.inv}}</button></div></td>
+                      <td style="white-space: normal; min-width: 200px"><div style="font-weight: 500"><a href="{{p.href}}" onClick="{{p.open}}" style="font: inherit; font-weight: 500; color: #000; text-decoration: underline; cursor: pointer; text-align: left">{{p.title}}</a></div><div style="font-size: 11px; color: #6B7280; margin-top: 2px">{{p.customer}}</div><div style="font-size: 11px; margin-top: 4px"><a href="{{p.href}}" onClick="{{p.open}}" style="font: inherit; font-family: 'IBM Plex Mono',monospace; font-size: 11px; color: #1E7A62; text-decoration: underline; cursor: pointer">{{p.inv}}</a></div></td>
                       <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.sale}}</td>
                       <td style="text-align: right; font-family: 'IBM Plex Mono',monospace">{{p.cost}}</td>
                       <td style="text-align: right; font-family: 'IBM Plex Mono',monospace; font-weight: 600; border-right: 1px solid #D1D5DB">{{p.net}}</td>
@@ -1902,6 +1902,7 @@ class Component extends DCLogic {
     window.addEventListener('popstate', function () {
       var t = pageFromHash();
       if (t) self.setState({ tab: t, custDetail: null, backTab: null });
+      else self.applyDocHash();
     });
     if (!window.supabase || !window.WB_CONFIG) { this.setState({ gate: 'error', fatal: 'Config is missing Supabase details' }); return; }
     SB = window.supabase.createClient(WB_CONFIG.url, WB_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
@@ -1926,6 +1927,7 @@ class Component extends DCLogic {
       await loadAll();
       this._loadedMs = Date.now();
       this.setState({ gate: 'in', loadedAt: new Date().toLocaleString('zh-CN') });
+      this.applyDocHash();
     } catch (e) { this.setState({ gate: 'error', fatal: errText(e) }); }
   }
   async reload(silent) {
@@ -2018,6 +2020,23 @@ class Component extends DCLogic {
     var k = this.edKey(kind), p = {};
     p[k] = Object.assign({}, this.state[k], patch);
     this.setState(p);
+  }
+  // 文件链接：左键在应用内打开；右键 / Ctrl·Cmd+点击 / 中键交给浏览器，在新标签页打开 #/doc/编号
+  docLinkGo(d, fromCust) {
+    var self = this;
+    return function (e) {
+      if (e && (e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) return;
+      if (e && e.preventDefault) e.preventDefault();
+      self.openDoc(d, fromCust);
+      try { history.pushState(null, '', '#/doc/' + d.id); } catch (x) {}
+    };
+  }
+  // 地址栏是 #/doc/编号 时，打开对应文件（数据载入后调用）
+  applyDocHash() {
+    var m = (location.hash || '').match(/^#\/doc\/(\d+)$/);
+    if (!m) return;
+    var d = DB.docs.filter(function (x) { return String(x.id) === m[1]; })[0];
+    if (d) this.openDoc(d);
   }
   openDoc(d, fromCust) {
     var p = { tab: d.kind === 'quote' ? 'quo' : 'inv', custDetail: null, backCust: (fromCust && d.customer_id != null) ? d.customer_id : null };
@@ -2689,7 +2708,7 @@ class Component extends DCLogic {
         sale: fmt(d.total), cost: fmt(d.cost), net: fmt(n), co: isOld ? '—' : fmt(x.co), bernice: isOld ? '—' : fmt(x.b), balon: isOld ? '—' : fmt(x.ba),
         pay: ps[0], payStyle: ps[1], paid: fmt(paid), owing: fmt(Math.max(d.total - paid, 0)),
         raw: { sale: d.total, cost: d.cost, net: n, paid: paid }, v: { co: x.co, b: x.b, ba: x.ba },
-        open: function () { self.openDoc(d); },
+        href: '#/doc/' + d.id, open: self.docLinkGo(d),
         how: {
           co: isOld ? 'year-end by balance 40/60' : (isB0 || no10 ? '2025: no 10% deduction' : (isB ? 'Plus 50% (' + fmt(n * 0.5) + '）× 10%' : 'Net profit ' + fmt(n) + ' × 10%')),
           b: isOld ? 'year-end by balance 40%' : (isB0 ? 'first 50% = ' + fmt(n * 0.5) + ', then ' + fmt(n * 0.5) + ' × 45%' : (no10 ? fmt(n) + ' × 45%' : (isB ? 'first 50% = ' + fmt(n * 0.5) + ', then ' + fmt(n * 0.45) + ' × 45% = ' + fmt(n * 0.2025) : fmt(n * 0.9) + ' × 45%'))),
@@ -3073,7 +3092,7 @@ class Component extends DCLogic {
     var divSal = salaryDeduct(divYear, divYearRows);
     divSal.co += ownServerCost(divYear);
     var divAllProjects = divYearRows.map(function (p) {
-      return { date: p.date, inv: p.inv, open: p.open, title: p.title, customer: p.customer, src: p.src, srcStyle: p.srcStyle, net: p.net, co: fmt(p.v.co), bernice: fmt(p.v.b), balon: fmt(p.v.ba) };
+      return { date: p.date, inv: p.inv, href: p.href, open: p.open, title: p.title, customer: p.customer, src: p.src, srcStyle: p.srcStyle, net: p.net, co: fmt(p.v.co), bernice: fmt(p.v.b), balon: fmt(p.v.ba) };
     });
     var divAllTotal = divYearRows.reduce(function (a, p) { return a + p.raw.net; }, 0);
     var divAllTotals = { net: fmt(divAllTotal), co: fmt(divYearRows.reduce(function (a, p) { return a + p.v.co; }, 0) - divSal.co), bernice: fmt(divYearRows.reduce(function (a, p) { return a + p.v.b; }, 0) - divSal.b), balon: fmt(divYearRows.reduce(function (a, p) { return a + p.v.ba; }, 0) - divSal.ba) };
@@ -3083,7 +3102,7 @@ class Component extends DCLogic {
         style: 'padding:8px 16px;border-radius:999px;font:inherit;font-size:14px;cursor:pointer;' + (on ? 'background:#1E7A62;color:#FFFFFF;border:1px solid #1E7A62;font-weight:600' : 'background:#FFFFFF;color:#374151;border:1px solid #D1D5DB') };
     });
     var divRows = who === 'all' ? [] : divYearRows.map(function (p) {
-      return { date: p.date, inv: p.inv, open: p.open, title: p.title, customer: p.customer, src: p.src, srcStyle: p.srcStyle, net: p.net, val: fmt(p.v[who]), how: p.how[who] };
+      return { date: p.date, inv: p.inv, href: p.href, open: p.open, title: p.title, customer: p.customer, src: p.src, srcStyle: p.srcStyle, net: p.net, val: fmt(p.v[who]), how: p.how[who] };
     });
     var divOneRows = divRows;
     var divOneTotal = who === 'all' ? '' : fmt(divYearRows.reduce(function (a, p) { return a + p.v[who]; }, 0) - (who === 'co' ? divSal.co : (who === 'b' ? divSal.b : divSal.ba)));
